@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contratos Recorrentes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
@@ -618,8 +618,26 @@ var CORE = (function () {
         var arqs = p.arquivos && p.arquivos.length ? p.arquivos : (ctx.listarPasta ? ctx.listarPasta(cfg) : []);
         var res = conciliar(db, arqs, hoje, cfg), apl = 0;
         if (p.aplicarAuto) res.forEach(function (x) { if (x.situacao === 'auto' && aplicarVinculo(db, x.lancId, x.arq, x.p, hoje, true)) { x.aplicado = true; apl++; } });
-        if (apl) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; log('conciliar', apl + ' vínculo(s) automáticos'); }
-        r.resultado = res; r.lidos = arqs.length; r.msg = arqs.length + ' arquivo(s) lidos · ' + apl + ' vinculado(s) automaticamente'; break;
+        if (apl) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; }
+        log('conciliar', arqs.length + ' PDF(s) lidos · ' + apl + ' vínculo(s) automáticos');
+        r.resultado = res; r.lidos = arqs.length; r.msg = arqs.length + ' arquivo(s) lidos · ' + apl + ' vinculado(s) automaticamente';
+        if (p.resumo && ctx.enviarEmail) {
+          var jaHoje = (db.log || []).some(function (l) { return l.acao === 'resumoConciliacao' && String(l.quando).slice(0, 10) === hoje; });
+          var dest = cfg.emailGestor || ctx.dono || '';
+          if (!jaHoje && dest) {
+            var ci2 = idx(db), comp0 = hoje.slice(0, 7), novos2 = res.filter(function (x) { return x.aplicado; });
+            var lsM = db.lancamentos.filter(function (l) { return l.comp === comp0 && ci2[l.contrato]; }), comPdf = lsM.filter(function (l) { return l.arquivo; }).length;
+            var pend = lsM.map(function (l) { return { l: l, s: statusLanc(l, hoje, cfg) }; }).filter(function (x) { return x.s.n >= 2; }).sort(function (a, b) { return b.s.n - a.s.n || (a.l.dtVenc < b.l.dtVenc ? -1 : 1); });
+            var conf = res.filter(function (x) { return x.situacao === 'sugerido' || x.situacao === 'ambiguo'; }).length;
+            var linha = function (c0, extra) { return '<tr><td style="padding:4px 8px;border-bottom:1px solid #D9E2DF">' + esc(c0.fornecedor) + '</td><td style="padding:4px 8px;border-bottom:1px solid #D9E2DF">' + esc(c0.cc) + '</td><td style="padding:4px 8px;border-bottom:1px solid #D9E2DF">' + extra + '</td></tr>'; };
+            var html = '<div style="font:14px Arial,sans-serif;color:#15241F"><p><b>Leitura da pasta do SOLUS</b> · ' + fmtBR(hoje) + ' · ' + arqs.length + ' PDF(s) lidos</p><p>Competência ' + fmtComp(comp0) + ': <b>' + comPdf + ' de ' + lsM.length + '</b> contratos com PDF lançado.' + (conf ? ' ' + conf + ' vínculo(s) aguardam confirmação no painel.' : '') + '</p>'
+              + (novos2.length ? '<p><b>Lançados identificados agora (' + novos2.length + ')</b></p><table cellspacing="0" style="border-collapse:collapse;font-size:13px">' + novos2.map(function (x) { var l0 = db.lancamentos.filter(function (l) { return l.id === x.lancId; })[0], c0 = ci2[l0.contrato]; return linha(c0, 'NF ' + esc(x.p.nf || '') + (x.p.valor != null ? ' · ' + moeda(x.p.valor) : '') + (x.p.data ? ' · lançado ' + fmtBR(x.p.data) : '')); }).join('') + '</table>' : '<p>Nenhum lançamento novo desde a última leitura.</p>')
+              + (pend.length ? '<p><b>Pendentes (' + pend.length + ')</b></p><table cellspacing="0" style="border-collapse:collapse;font-size:13px">' + pend.map(function (x) { return linha(ci2[x.l.contrato], '<span style="color:' + (x.s.n === 3 ? '#B42318' : '#9A6206') + '">' + esc(x.s.t) + '</span> · venc ' + fmtBR(x.l.dtVenc) + ' · ' + esc(ci2[x.l.contrato].resp || '')); }).join('') + '</table>' : '<p>Nenhuma pendência na competência.</p>') + '</div>';
+            var texto = 'Leitura da pasta do SOLUS ' + fmtBR(hoje) + ': ' + comPdf + '/' + lsM.length + ' com PDF. Novos: ' + novos2.length + '. Pendentes: ' + pend.length + '.';
+            if (ctx.enviarEmail({ para: dest, cc: '', assunto: '[Contratos] Leitura da pasta — ' + comPdf + '/' + lsM.length + ' lançados · ' + pend.length + ' pendente(s) — ' + fmtBR(hoje), html: html, texto: texto })) { log('resumoConciliacao', 'e-mail para ' + dest); r.resumoEnviado = dest; }
+          }
+        }
+        break;
       }
       case 'vincular': {
         var ok = 0; (p.vinculos || []).forEach(function (v) { if (aplicarVinculo(db, v.lancId, v.arq, v.p || parseArquivo(v.arq.nome, v.arq.caminho, listaCC(db), v.arq.data), hoje, p.aprender !== false)) ok++; });
@@ -693,7 +711,7 @@ const hj = new Date(), HOJE = C.iso(hj.getFullYear(), hj.getMonth() + 1, hj.getD
 let DB = { contratos: [], lancamentos: [], responsaveis: [], config: [], log: [] }, CFG = C.cfgDe(DB), COMP = HOJE.slice(0, 7);
 let ABA = (location.hash || '').replace('#', '') || LS.get('cr_aba') || 'painel';
 let F = { q: '', resp: '', cc: '', st: '', dia: '' }, FC = { q: '', cc: '', vig: '', ativo: 'S' }, FA = '', CONC = null, SEL = new Set();
-const CONEX_PADRAO = {"api": "https://script.google.com/macros/s/AKfycbxvfLHx_Mhl47T0EUOb8PNMyOakbYQaHuWbNm6ukMdmlMbyASXiKHIfXWHVCeN6yXJhJQ/exec", "token": "b199d1c362025e7b27f5a73058dbb7a4"};
+const CONEX_PADRAO = {"api": "https://script.google.com/macros/s/AKfycbxvfLHx_Mhl47T0EUOb8PNMyOakbYQaHuWbNm6ukMdmlMbyASXiKHIfXWHVCeN6yXJhJQ/exec", "token": ""};
 const _cx = LS.get('cr_conexao') || {};
 const CONEX = { api: _cx.api || CONEX_PADRAO.api, token: _cx.token || CONEX_PADRAO.token };
 
@@ -701,7 +719,7 @@ const CONEX = { api: _cx.api || CONEX_PADRAO.api, token: _cx.token || CONEX_PADR
 function modo() { if (window.google && google.script && google.script.run) return 'gas'; return CONEX.api ? 'http' : 'local'; }
 async function call(acao, p) {
   const m = modo();
-  if (m === 'gas') return new Promise((res, rej) => google.script.run.withSuccessHandler(s => res(JSON.parse(s))).withFailureHandler(rej).rpc(acao, p || {}));
+  if (m === 'gas') return new Promise((res, rej) => google.script.run.withSuccessHandler(s => res(JSON.parse(s))).withFailureHandler(rej).rpc(acao, p || {}, CONEX.token || ''));
   if (m === 'http') { const r = await fetch(CONEX.api, { method: 'POST', body: JSON.stringify({ acao, p, token: CONEX.token || '' }) }); return r.json(); }
   if (acao === 'carregar') return { ok: true, db: DB };
   const ctx = { hoje: HOJE, hora: new Date().toTimeString().slice(0, 5), envia: false, enviarEmail: () => true };
@@ -711,6 +729,7 @@ async function act(acao, p, o = {}) {
   $('#busy').hidden = false;
   try {
     const r = await call(acao, p);
+    if (r && r.auth || r && !r.ok && /chave de acesso|token/i.test(r.msg || '')) { pedirChave(); return r; }
     if (!r || !r.ok) { toast((r && r.msg) || 'Falha ao executar ' + acao, 1); return r; }
     if (r.db) setDB(r.db);
     if (r.msg && !o.silent) toast(r.msg);
@@ -769,7 +788,11 @@ function vPainel() {
   const fila = al.slice(0, 60).map(a => `<div class="al n${a.n}"><span class="sv"></span><div style="min-width:0"><div class="ti">${esc(a.tipo)} · ${esc(a.st)}</div><div class="fn" style="font:600 13px var(--f-c)">${esc(a.forn)}</div><div class="sub"><span>${esc(a.cc)}</span><span>${esc(a.serv)}</span>${a.ident ? `<span>${esc(a.ident)}</span>` : ''}${a.canal ? `<span class="chip">${esc(a.canal)}</span>` : ''}${a.k === 'vig' ? `<span>vigência ${C.fmtBR(a.data)}</span>` : `<span>prog ${diaBR(a.dtProg)} · venc ${diaBR(a.dtVenc)}</span><span>${C.fmtComp(a.comp)}</span>`}<span>${esc(a.resp || 'sem responsável')}</span></div></div><div class="ac">${a.k === 'vig' ? `<button class="btn sm" data-act="editC" data-id="${a.contrato}">Contrato</button>` : `${['verif', 'atras', 'venc', 'avenc'].includes(a.k) ? `<button class="btn sm" data-act="marca" data-id="${a.lancId}" data-f="lancado">✓ Lançado</button>` : ''}<button class="btn sm" data-act="cobrar" data-id="${a.lancId}" title="E-mail ao responsável">✉ Cobrar</button>`}</div></div>`).join('');
   const resp = {}; C.alertas(DB, HOJE, CFG).forEach(a => { const r = a.resp || '—'; resp[r] = resp[r] || { p: 0, c: 0 }; resp[r].p++; if (a.n === 3) resp[r].c++; });
   const em = {}; DB.responsaveis.forEach(r => em[C.norm(r.nome)] = r.email);
-  return gerar + kp + `<div class="grid2">
+  const ultC = DB.log.filter(l => l.acao === 'conciliar').map(l => String(l.quando)).sort().pop();
+  const diasC = ultC ? C.dias(ultC.slice(0, 10), HOJE) : null;
+  const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button>`;
+  const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC > 1 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(ultC)}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(ultC)}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
+  return gerar + aviso + kp + `<div class="grid2">
    <section class="card"><h3>Fila de ação <span class="hint">${al.length} item(ns) · últimas 3 competências + vigência</span><span class="sp chips">${['', ...tipos].map(t => `<button class="fch" data-fa="${esc(t)}" aria-pressed="${FA === t}">${t || 'Todos'}</button>`).join('')}</span></h3>
    <div class="fila">${fila || '<div class="empty">Nenhuma pendência. Tudo em dia.</div>'}</div></section>
    <div style="display:flex;flex-direction:column;gap:14px">
@@ -931,6 +954,7 @@ function vConc() {
   return `<div class="grid2"><section class="card"><h3>Ler a pasta de documentos lançados</h3><div class="bd" style="display:flex;flex-direction:column;gap:12px">
    <div class="row"><button class="btn pri" data-act="lerDrive" ${m === 'local' ? 'disabled title="Disponível com a planilha conectada (Apps Script)"' : ''}>Ler pasta do Google Drive</button><span class="hint">${m === 'local' ? 'Conecte a planilha em Configuração para ler o Drive e rodar todo dia às ' + CFG.horaEnvio + 'h.' : CFG.pastaId ? 'Pasta configurada · últimos ' + CFG.diasPasta + ' dias' : 'Informe o ID da pasta em Configuração.'}</span></div>
    <div style="display:flex;flex-direction:column;gap:6px"><span class="hint">Pasta de documentos lançados (rede · relatórios diários são ignorados):</span><code style="word-break:break-all;padding:6px 8px">${esc(CFG.pastaLocal)}</code></div>
+   <div class="row"><button class="btn pri" data-act="lerSolus">Ler pasta do SOLUS (o navegador lembra a pasta)</button><button class="btn sm ghost" data-act="trocarSolus">trocar pasta</button></div>
    <div class="row"><label class="btn" for="dirIn">Selecionar pasta do computador…</label><input type="file" id="dirIn" webkitdirectory directory multiple hidden><label class="btn" for="filIn">Selecionar PDFs…</label><input type="file" id="filIn" accept=".pdf" multiple hidden><span class="hint">Só o nome e a pasta de cada arquivo são lidos; o PDF não sai do computador.</span></div>
    <details><summary class="hint" style="cursor:pointer">Colar lista de caminhos (mais rápido para pastas grandes na rede)</summary><p class="hint" style="margin:6px 0">1) Copie o comando · 2) Tecla Windows, digite <b>cmd</b>, Enter · 3) Clique com o botão direito para colar e tecle Enter · 4) Volte aqui e cole (Ctrl+V) na caixa abaixo.</p><div class="row"><code id="cmdDir" style="flex:1 1 260px;word-break:break-all;padding:6px 8px">chcp 65001 &gt;nul &amp; dir /s /b "${esc(CFG.pastaLocal)}\*.pdf" | clip</code><button class="btn sm" data-act="copiaCmd">Copiar comando</button></div><textarea id="colar" class="in" rows="4" style="width:100%;margin-top:6px;font-family:var(--f-m);font-size:12px" placeholder="Lançados\\15.09.2026\\11111111000111_NF 1234_1500,00_ADMINISTRAÇÃO.pdf"></textarea><button class="btn sm" data-act="lerColar" style="margin-top:6px">Conciliar lista</button></details>
    <label class="row hint"><input type="checkbox" id="autoAp" checked> vincular automaticamente quando score ≥ ${CFG.autoScore} (CNPJ + CC/UC + competência)</label>
@@ -981,7 +1005,7 @@ function vConfig() {
    <div class="row"><label class="row hint"><input type="checkbox" id="subst"> substituir contratos e lançamentos atuais (desmarcado: só atualiza os CNPJs)</label><label class="btn" for="xIn">Escolher arquivo .xlsx…</label><input type="file" id="xIn" accept=".xlsx,.xls" hidden onchange="importarX(this)"></div></div></section>
   </div><div style="display:flex;flex-direction:column;gap:14px">
   <section class="card"><h3>Conexão com o Google Sheets <span class="pill ${m === 'local' ? '' : 'p-conc'}">${m === 'gas' ? 'Rodando no Apps Script' : m === 'http' ? 'URL conectada' : 'Local'}</span></h3><div class="bd" style="display:flex;flex-direction:column;gap:8px">
-   ${m === 'gas' ? '<p class="hint" style="margin:0">Este painel está sendo servido pelo Apps Script da própria planilha. Tudo é gravado nas abas CONTRATOS e LANCAMENTOS.</p>' : `<p class="hint" style="margin:0">Para usar este HTML hospedado fora (GitHub Pages/Netlify), cole a URL do app da Web publicado pelo Apps Script.</p><div class="form"><label class="w2">URL do app da Web (/exec)<input id="apiUrl" class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(CONEX.api)}"></label><label class="w2">Token da API<input id="apiTok" class="in" type="password" autocomplete="off" placeholder="gerado por gerarTokenApi()" value="${esc(CONEX.token || '')}"></label></div><div class="row"><button class="btn sm pri" data-act="salvaApi">Conectar</button>${CONEX.api ? '<button class="btn sm" data-act="limpaApi">Desconectar</button>' : ''}<span class="hint">Token: na planilha, menu <b>Contratos › Gerar token para painel externo</b>.</span></div>`}
+   ${CONEX.token ? '<div class="row"><span class="hint">Chave de acesso salva neste navegador.</span><button class="btn sm" type="button" onclick="sairChave()">Sair (esquecer chave)</button></div>' : ''}${m === 'gas' ? '<p class="hint" style="margin:0">Este painel está sendo servido pelo Apps Script da própria planilha. Tudo é gravado nas abas CONTRATOS e LANCAMENTOS.</p>' : `<p class="hint" style="margin:0">Para usar este HTML hospedado fora (GitHub Pages/Netlify), cole a URL do app da Web publicado pelo Apps Script.</p><div class="form"><label class="w2">URL do app da Web (/exec)<input id="apiUrl" class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(CONEX.api)}"></label><label class="w2">Token da API<input id="apiTok" class="in" type="password" autocomplete="off" placeholder="gerado por gerarTokenApi()" value="${esc(CONEX.token || '')}"></label></div><div class="row"><button class="btn sm pri" data-act="salvaApi">Conectar</button>${CONEX.api ? '<button class="btn sm" data-act="limpaApi">Desconectar</button>' : ''}<span class="hint">Token: na planilha, menu <b>Contratos › Gerar token para painel externo</b>.</span></div>`}
   </div></section>
   <section class="card"><h3>Implantação (uma vez)</h3><div class="bd"><ol class="steps">
    <li>Na planilha do Google Sheets com as abas mensais: <b>Extensões › Apps Script</b>.</li>
@@ -1003,6 +1027,50 @@ function importarX(inp) {
     await act('migrar', { tabs, substituir: $('#subst').checked });
   }; rd.readAsArrayBuffer(f);
 }
+
+/* ---------- pasta do SOLUS lembrada pelo navegador (File System Access) ---------- */
+const IDB = {
+  abrir() { return new Promise((res, rej) => { const r = indexedDB.open('contratos-rec', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async get(k) { try { const db = await IDB.abrir(); return await new Promise(res => { const t = db.transaction('kv').objectStore('kv').get(k); t.onsuccess = () => res(t.result || null); t.onerror = () => res(null); }); } catch (e) { return null; } },
+  async set(k, v) { try { const db = await IDB.abrir(); await new Promise(res => { const t = db.transaction('kv', 'readwrite'); t.objectStore('kv').put(v, k); t.oncomplete = res; t.onerror = res; }); } catch (e) {} }
+};
+const MESES_P = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
+let PASTA_ESTADO = 'sem';
+async function lerHandle(dir) {
+  const out = [], cur = HOJE.slice(0, 7), prev = C.compSoma(cur, -1);
+  const mesOk = n => { const u = C.norm(n), i = MESES_P.findIndex(m => (' ' + u + ' ').includes(' ' + m + ' ')); if (i < 0) return null; const cp = HOJE.slice(0, 4) + '-' + String(i + 1).padStart(2, '0'); return cp === cur || cp === prev; };
+  const base = (CFG.pastaLocal || dir.name).replace(/\\+$/, '');
+  async function walk(d, path, depth) {
+    for await (const [name, h] of d.entries()) {
+      if (h.kind === 'file') { if (/\.pdf$/i.test(name) && !/^RELAT/i.test(name)) out.push({ nome: name, caminho: path + '\\' + name, data: '', url: '' }); }
+      else if (depth < 4 && mesOk(name) !== false && !/RELAT[OÓ]RIO/i.test(name)) await walk(h, path + '\\' + name, depth + 1);
+    }
+  }
+  await walk(dir, base, 0); return out;
+}
+async function lerPastaSolus(interativo) {
+  let emFrame = false; try { emFrame = window.self !== window.top; } catch (e) { emFrame = true; }
+  if (!window.showDirectoryPicker || emFrame) { if (interativo) toast(emFrame ? 'Pelo link do Google o navegador não pode lembrar a pasta. Abra o painel pelo site ou pelo arquivo Contratos-Recorrentes-local.html.' : 'Este navegador não lembra pastas. Use o Chrome ou o Edge, ou "Selecionar pasta do computador".', 1); PASTA_ESTADO = 'semsuporte'; return; }
+  let h = await IDB.get('pastaSolus');
+  if (!h) { if (!interativo) { PASTA_ESTADO = 'sem'; return; } try { h = await window.showDirectoryPicker({ id: 'solus', mode: 'read' }); } catch (e) { return; } await IDB.set('pastaSolus', h); }
+  let perm = await h.queryPermission({ mode: 'read' });
+  if (perm !== 'granted') { if (!interativo) { PASTA_ESTADO = 'permissao'; renderTabsOnly(); return; } perm = await h.requestPermission({ mode: 'read' }); if (perm !== 'granted') { PASTA_ESTADO = 'permissao'; return; } }
+  PASTA_ESTADO = 'lendo'; toast('Lendo a pasta do SOLUS (' + h.name + ')…');
+  let arqs; try { arqs = await lerHandle(h); } catch (e) { PASTA_ESTADO = 'erro'; toast('Não consegui ler a pasta: ' + e.message + '. Confira se a unidade S: está conectada.', 1); return; }
+  const r = await act('conciliar', { arquivos: arqs, aplicarAuto: true, resumo: true }, { noRender: true });
+  PASTA_ESTADO = 'ok';
+  if (r && r.ok) { CONC = { resultado: r.resultado, lidos: r.lidos }; render(); if (r.resumoEnviado) toast(r.msg + ' · resumo enviado para ' + r.resumoEnviado); }
+}
+async function trocarPastaSolus() { await IDB.set('pastaSolus', null); lerPastaSolus(true); }
+function renderTabsOnly() { if (ABA === 'painel') render(); }
+
+/* ---------- chave de acesso ---------- */
+function pedirChave() {
+  modal('Acesso restrito', `<form id="fK" class="form"><p class="hint" style="grid-column:1/-1;margin:0">Este painel controla os contratos recorrentes da Suprimentos. Informe a chave de acesso fornecida pelo gestor. Ela fica salva neste navegador.</p><label class="w2">Chave de acesso<input class="in" id="kIn" type="password" autocomplete="current-password" required></label><div class="row" style="grid-column:1/-1"><button class="btn pri" type="submit">Entrar</button></div></form>`);
+  $('#fK').addEventListener('submit', e => { e.preventDefault(); CONEX.token = $('#kIn').value.trim(); LS.set('cr_conexao', CONEX); fecharModal(); boot(); });
+  setTimeout(() => $('#kIn') && $('#kIn').focus(), 50);
+}
+function sairChave() { CONEX.token = ''; LS.set('cr_conexao', CONEX); location.reload(); }
 
 /* ---------- modal e e-mails ---------- */
 function modal(t, h) { $('#mT').textContent = t; $('#mC').innerHTML = h; $('#modal').hidden = false; }
@@ -1032,6 +1100,8 @@ document.addEventListener('click', async e => {
   else if (a === 'limpaDia') { F.dia = ''; render(); }
   else if (a === 'lote') { await act('atualizarLancamentos', { itens: [...SEL].map(id => ({ id, campos: { [b.dataset.f]: 'S' } })) }); SEL.clear(); render(); }
   else if (a === 'loteCobrar') { const all = []; for (const id of SEL) { const r = await act('cobrar', { id }, { noRender: true, silent: true }); if (r && r.ok) all.push(...r.emails); } SEL.clear(); render(); if (modo() === 'local') mostrarEmails(all); else toast(all.length + ' cobrança(s) enviada(s)'); }
+  else if (a === 'lerSolus') lerPastaSolus(true);
+  else if (a === 'trocarSolus') trocarPastaSolus();
   else if (a === 'novoC') formContrato(null);
   else if (a === 'regTodos') consultarRegimes(null);
   else if (a === 'reg1') { await consultarRegimes([id]); const c = DB.contratos.find(x => x.id === id); if (c && $('#regBox')) $('#regBox').innerHTML = celRegime(c); }
@@ -1085,6 +1155,7 @@ async function boot() {
   }
   if (!lancsComp(HOJE.slice(0, 7)).length && DB.contratos.length) await act('gerarCompetencia', { comp: HOJE.slice(0, 7) }, { silent: true, noRender: true });
   render();
+  if (modo() !== 'local' && DB.contratos.length) lerPastaSolus(false);
 }
 boot();
 </script>
