@@ -444,6 +444,12 @@ var CORE = (function () {
       if (jaVinc[norm(a.nome)]) { out.situacao = 'jaVinculado'; out.lancId = jaVinc[norm(a.nome)]; res.push(out); return; }
       var cands = p.doc ? (porDoc[normDoc(p.doc)] || []).filter(function (c) { return c.ativo !== 'N'; }) : [];
       if (p.doc && cands.length) { out.score += 50; out.motivo.push('CNPJ/CPF'); }
+      if (p.doc && cands.length) { // mesmo fornecedor cadastrado em outras linhas sem CNPJ (ex.: um contrato por veículo/placa)
+        var baseF = function (c) { return norm(String(c.fornecedor || '').split(' - ')[0]).replace(/ /g, ''); }, bases = {};
+        cands.forEach(function (c) { bases[baseF(c)] = 1; });
+        var nfX = norm(p.fornecedor || '').replace(/ /g, '');
+        db.contratos.forEach(function (c) { if (c.ativo !== 'N' && !dig(c.doc) && cands.indexOf(c) < 0 && (bases[baseF(c)] || nfX && notaNome(c, nfX).ok)) cands.push(c); });
+      }
       if (!cands.length) {
         // sem CNPJ cadastrado: tenta identificador (UC/linha) contido no nome
         var dn = dig(a.nome);
@@ -458,7 +464,7 @@ var CORE = (function () {
         if (cands.length) { out.score += 35; out.motivo.push('nome do fornecedor'); }
       }
       var ccF = p.ccArq || p.cc, ka = chaveAlias(p), fa = cands.filter(function (c) { return ('|' + (c.aliases || '') + '|').indexOf('|' + ka + '|') >= 0; });
-      if (cands.length && fa.length) { cands = fa; out.score += 35; out.motivo.push('vínculo aprendido'); }
+      if (cands.length && fa.length) { cands = cands.filter(function (c) { return fa.indexOf(c) >= 0 || ccF && canonCC(c.cc) === canonCC(ccF); }); out.score += 35; out.motivo.push('vínculo aprendido'); }
       else if (cands.length && ccF) {
         var f = cands.filter(function (c) { return canonCC(c.cc) === canonCC(ccF); });
         if (f.length) { cands = f; out.score += 15; out.motivo.push('CC'); }
@@ -518,6 +524,17 @@ var CORE = (function () {
       });
     });
     return res.concat(extras);
+  }
+  // desfaz vínculos automáticos errados: PDF com vencimento longe do lançamento e outro lançamento do mesmo fornecedor/CC em aberto com vencimento batendo
+  function repararVinculos(db) {
+    var cm = idx(db), ccs = listaCC(db), n = 0, baseF = function (c) { return norm(String(c.fornecedor || '').split(' - ')[0]).replace(/ /g, ''); };
+    db.lancamentos.forEach(function (l) {
+      if (!l.arquivo || l.conciliado !== 'S') return; var c = cm[l.contrato]; if (!c) return;
+      var p = parseArquivo(l.arquivo, '', ccs); if (!p.venc || !l.dtVenc || Math.abs(dias(l.dtVenc, p.venc)) <= 5) return;
+      var outro = db.lancamentos.some(function (y) { var c2 = cm[y.contrato]; return y !== l && !y.arquivo && y.conciliado !== 'H' && c2 && c2.ativo !== 'N' && canonCC(c2.cc) === canonCC(c.cc) && (baseF(c2) === baseF(c) || normDoc(c2.doc) && normDoc(c2.doc) === normDoc(c.doc)) && y.dtVenc && Math.abs(dias(y.dtVenc, p.venc)) <= 2; });
+      if (outro) { l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; n++; }
+    });
+    return n;
   }
   function aplicarVinculo(db, lid, a, p, hoje, aprender) {
     var l = db.lancamentos.filter(function (x) { return x.id === lid; })[0]; if (!l) return false;
@@ -644,9 +661,17 @@ var CORE = (function () {
       }
       case 'conciliar': {
         var arqs = p.arquivos && p.arquivos.length ? p.arquivos : (ctx.listarPasta ? ctx.listarPasta(cfg) : []);
+        // refaz os vínculos automáticos dos PDFs lidos agora (corrige vínculos feitos por versões anteriores); vínculos manuais (M) ficam
+        var lidosN = {}, antes = {}; arqs.forEach(function (a) { lidosN[norm(a.nome)] = 1; });
+        db.lancamentos.forEach(function (l) { if (l.arquivo && l.conciliado === 'S' && lidosN[norm(l.arquivo)]) { antes[l.id] = { arquivo: l.arquivo, arqUrl: l.arqUrl, arqData: l.arqData, lancado: l.lancado, dtLanc: l.dtLanc }; l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; } });
+        var rep = repararVinculos(db); if (rep) dirty.LANCAMENTOS = 1;
         var res = conciliar(db, arqs, hoje, cfg), apl = 0;
         if (p.aplicarAuto) res.forEach(function (x) { if (x.situacao === 'auto' && aplicarVinculo(db, x.lancId, x.arq, x.p, hoje, true)) { x.aplicado = true; apl++; } });
-        if (apl) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; }
+        var usados = {}; db.lancamentos.forEach(function (l) { if (l.arquivo) usados[norm(l.arquivo)] = 1; });
+        var mud = 0; db.lancamentos.forEach(function (l) { var a0 = antes[l.id]; if (!a0) return;
+          if (!l.arquivo && !usados[norm(a0.arquivo)]) { l.arquivo = a0.arquivo; l.arqUrl = a0.arqUrl; l.arqData = a0.arqData; l.lancado = a0.lancado; l.dtLanc = a0.dtLanc; l.conciliado = 'S'; usados[norm(a0.arquivo)] = 1; } // vínculo antigo continua valendo (ex.: confirmado à mão)
+          if (l.arquivo !== a0.arquivo) mud++; });
+        if (apl || mud) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; }
         log('conciliar', arqs.length + ' PDF(s) lidos · ' + apl + ' vínculo(s) automáticos');
         r.resultado = res; r.lidos = arqs.length; r.msg = arqs.length + ' arquivo(s) lidos · ' + apl + ' vinculado(s) automaticamente';
         if (p.resumo && ctx.enviarEmail) {
@@ -668,7 +693,7 @@ var CORE = (function () {
         break;
       }
       case 'vincular': {
-        var ok = 0; (p.vinculos || []).forEach(function (v) { if (aplicarVinculo(db, v.lancId, v.arq, v.p || parseArquivo(v.arq.nome, v.arq.caminho, listaCC(db), v.arq.data), hoje, p.aprender !== false)) ok++; });
+        var ok = 0; (p.vinculos || []).forEach(function (v) { if (aplicarVinculo(db, v.lancId, v.arq, v.p || parseArquivo(v.arq.nome, v.arq.caminho, listaCC(db), v.arq.data), hoje, p.aprender !== false)) { ok++; db.lancamentos.forEach(function (l) { if (l.id === v.lancId) l.conciliado = 'M'; }); } });
         dirty.LANCAMENTOS = dirty.CONTRATOS = 1; log('vincular', ok); r.msg = ok + ' documento(s) vinculado(s)'; break;
       }
       case 'desvincular': {
@@ -727,7 +752,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.13', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.13d', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -869,7 +894,7 @@ function vLanc() {
    <td><label class="tgl"><input type="checkbox" class="tg" data-f="lancado" ${l.lancado === 'S' ? 'checked' : ''} aria-label="Lançado">${l.dtLanc ? diaBR(l.dtLanc) : ''}</label></td>
    <td><input class="in sm w-nf" data-f="nf" value="${esc(l.nf)}" aria-label="NF"></td>
    <td><input class="in sm w-v" data-f="valor" value="${l.valor === '' || l.valor == null ? '' : esc(String(l.valor).replace('.', ','))}" inputmode="decimal" aria-label="Valor"></td>
-   <td>${l.arquivo ? `${l.arqUrl ? `<a href="${esc(l.arqUrl)}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : '<span class="hint">—</span>'}</td>
+   <td>${l.arquivo ? `${l.arqUrl ? `<a href="${esc(l.arqUrl)}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
    <td>${s.k !== 'conc' && s.k !== 'hist' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
   </tbody></table></div></section>`;
 }
@@ -1089,6 +1114,18 @@ async function lerPastaSolus(interativo) {
   PASTA_ESTADO = 'ok';
   if (r && r.ok) { CONC = { resultado: r.resultado, lidos: r.lidos }; render(); if (r.resumoEnviado) toast(r.msg + ' · resumo enviado para ' + r.resumoEnviado); }
 }
+function porque(id) {
+  const l = DB.lancamentos.find(x => x.id === id), ci = C.idx(DB), c = ci[l.contrato]; if (!c) return;
+  if (!CONC) { modal('Por que não achou o PDF?', `<p>A pasta ainda não foi lida nesta tela${PASTA_ESTADO !== 'ok' ? ' (situação: ' + esc(PASTA_ESTADO) + ')' : ''}. Clique em <b>Ler pasta do SOLUS</b> na aba Conciliação e depois clique de novo no <b>?</b>.</p><p class="hint">Aberto como arquivo do computador (file://) o navegador pede a pasta de novo; pelo site do GitHub ele lembra.</p>`); return; }
+  const d = C.dig(c.doc).replace(/^000/, ''), raiz = d.slice(0, 8), base = C.norm(String(c.fornecedor).split(' - ')[0]).replace(/ /g, '').slice(0, 12);
+  const its = CONC.resultado.filter(x => { const pd = C.dig(x.p.doc || '').replace(/^000/, ''); return d && pd && (pd === d || pd.slice(0, 8) === raiz) || base && C.norm(x.arq.nome).replace(/ /g, '').includes(base); });
+  const lab = { auto: 'vinculado auto', sugerido: 'sugerido', ambiguo: 'ambíguo', jaVinculado: 'já vinculado', semvinculo: 'sem contrato', outroCC: 'outro centro de custo', semLancamento: 'sem lançamento em aberto' };
+  const quem = lid => { if (!lid) return ''; const [cid, cp] = lid.split('@'); return (ci[cid] ? ci[cid].fornecedor : cid) + ' · ' + C.fmtComp(cp); };
+  modal('Por que não achou o PDF?', `<p><b>${esc(c.fornecedor)}</b> · ${esc(c.cc)} · CNPJ ${esc(c.doc || 'em branco')} · venc ${C.fmtBR(l.dtVenc)}</p>
+  <p class="hint">${CONC.lidos} arquivo(s) lidos na última leitura · ${its.length} deste fornecedor:</p>
+  ${its.length ? `<div style="max-height:55vh;overflow:auto"><table class="tbl"><thead><tr><th>Arquivo</th><th>Venc.</th><th>Valor</th><th>Resultado</th></tr></thead><tbody>${its.map(x => `<tr><td style="font-size:11px;word-break:break-all">${esc(x.arq.caminho || x.arq.nome)}</td><td>${x.p.venc ? C.fmtBR(x.p.venc) : '—'}</td><td>${x.p.valor != null ? C.moeda(x.p.valor) : '—'}</td><td><b>${lab[x.situacao] || x.situacao}${x.aplicado ? ' ✓' : ''}</b><div class="sub">${esc(quem(x.lancId))}</div><div class="sub">${esc((x.motivo || []).join(' · '))}</div></td></tr>`).join('')}</tbody></table></div>` : '<p><b>Nenhum PDF deste fornecedor foi encontrado na leitura.</b> Confira se a pasta escolhida é a "1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS" (ou a pasta 2026 acima dela).</p>'}
+  <p class="hint">Copie esta tela (print) e envie se precisar de ajuda.</p>`);
+}
 async function trocarPastaSolus() { await IDB.set('pastaSolus', null); lerPastaSolus(true); }
 function renderTabsOnly() { if (ABA === 'painel') render(); }
 
@@ -1125,6 +1162,7 @@ document.addEventListener('click', async e => {
   else if (a === 'marca') upd(id, { [b.dataset.f]: 'S' });
   else if (a === 'cobrar') { const r = await act('cobrar', { id }, { noRender: true }); if (r && r.ok && modo() === 'local') mostrarEmails(r.emails); }
   else if (a === 'desv') act('desvincular', { id });
+  else if (a === 'porque') porque(id);
   else if (a === 'limpaDia') { F.dia = ''; render(); }
   else if (a === 'lote') { await act('atualizarLancamentos', { itens: [...SEL].map(id => ({ id, campos: { [b.dataset.f]: 'S' } })) }); SEL.clear(); render(); }
   else if (a === 'loteCobrar') { const all = []; for (const id of SEL) { const r = await act('cobrar', { id }, { noRender: true, silent: true }); if (r && r.ok) all.push(...r.emails); } SEL.clear(); render(); if (modo() === 'local') mostrarEmails(all); else toast(all.length + ' cobrança(s) enviada(s)'); }
