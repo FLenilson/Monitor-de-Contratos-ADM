@@ -354,7 +354,8 @@ var CORE = (function () {
 
   /* ---- Leitura do nome do arquivo na pasta de documentos lançados ---- */
   function normDoc(d) { d = dig(d); return d.length === 14 && /^000/.test(d) ? d.slice(3) : d; }
-  function canonCC(x) { var n = norm(x).replace(/ /g, '').replace(/UNIMED$/, ''); if (/^ADMINISTRA(CAO|AO|O)?(MATRIZ|TI|FILIAIS)?$/.test(n) || n === 'MATRIZ') return 'ADMINISTRACAO'; if (/^ADMINISTRA(CAO|AO|O)?RP$/.test(n)) return 'ADMINISTRACAORP'; return n; }
+  function canonCC(x) { var n = norm(x).replace(/ /g, '').replace(/UNIMED$/, ''); var n2 = n.replace(/^(GESTAO|NUCLEO|SETOR|DEPARTAMENTO|AREA)(DE|DA|DO|DOS|DAS)?/, ''); if (n2.length >= 4 && n2 !== n) n = n2; if (/^ADMINISTRA(CAO|AO|O)?(MATRIZ|TI|FILIAIS)?$/.test(n) || n === 'MATRIZ') return 'ADMINISTRACAO'; if (/^ADMINISTRA(CAO|AO|O)?RP$/.test(n)) return 'ADMINISTRACAORP'; return n; }
+  function equivContrato(c) { return dig(normDoc(c.doc)).slice(0, 8) + '|' + canonCC(c.cc) + '|' + norm(c.servico) + '|' + (+c.diaVenc || 0); }
   function chaveAlias(p) { return norm(p.fornecedor || '').replace(/ /g, '') + '#' + canonCC(p.ccArq || p.cc || ''); }
   var STOPN = { LTDA: 1, EPP: 1, EIRELI: 1, DOS: 1, DAS: 1, CIA: 1, SITE: 1, EMAIL: 1, FISICO: 1, PASTA: 1, DOC: 1, TELEFONE: 1, LOGIN: 1, SENHA: 1 };
   function tokensNome(s) { return norm(String(s || '').replace(/\bUC\s*[\d.\-\/]+/gi, ' ').replace(/\(\d{2}\)\s*[\d ]+/g, ' ')).split(' ').filter(function (t) { return t.length >= 3 && !STOPN[t]; }); }
@@ -478,6 +479,15 @@ var CORE = (function () {
       out.opcoes = ls.map(function (x) { return x.l.id; });
       if (!ls.length) { out.situacao = 'semLancamento'; out.motivo.push('sem competência em aberto'); res.push(out); return; }
       var diffC = {}; ls.forEach(function (x) { diffC[x.l.contrato] = 1; });
+      if (Object.keys(diffC).length > 1 && p.venc) { // vencimento do arquivo diferencia (ex.: veículos com vencimentos diferentes)
+        var bestC = {}; ls.forEach(function (x) { var dv = Math.abs(dias(x.l.dtVenc, p.venc)); if (bestC[x.l.contrato] == null || dv < bestC[x.l.contrato]) bestC[x.l.contrato] = dv; });
+        var ordV = Object.keys(bestC).sort(function (a, b) { return bestC[a] - bestC[b]; });
+        if (bestC[ordV[0]] <= 3 && bestC[ordV[1]] >= bestC[ordV[0]] + 5) { ls = ls.filter(function (x) { return x.l.contrato === ordV[0]; }); diffC = {}; diffC[ordV[0]] = 1; out.motivo.push('vencimento'); }
+      }
+      if (Object.keys(diffC).length > 1) { // contratos equivalentes (mesmo CNPJ, CC, serviço e vencimento): qualquer um serve
+        var cmap2 = idx(db), eqk = {}; Object.keys(diffC).forEach(function (cid) { eqk[equivContrato(cmap2[cid])] = 1; });
+        if (Object.keys(eqk).length === 1) { var ls0 = ls[0]; ls = [ls0]; diffC = {}; diffC[ls0.l.contrato] = 1; out.motivo.push('contratos equivalentes'); }
+      }
       if (Object.keys(diffC).length > 1 && p.valor != null) {
         var pv = Object.keys(diffC).map(function (cid) { var hv0 = hist[cid] || [], m0 = media(hv0) || numBR((idx(db)[cid] || {}).valorRef); return { cid: cid, d: m0 == null ? Infinity : Math.abs(m0 - p.valor) / Math.max(m0, 1) }; }).sort(function (x, y) { return x.d - y.d; });
         if (pv[0].d < 0.25 && (pv.length < 2 || pv[1].d > Math.max(pv[0].d * 2, 0.1))) { ls = ls.filter(function (x) { return x.l.contrato === pv[0].cid; }); diffC = {}; diffC[pv[0].cid] = 1; out.score += 10; out.motivo.push('valor ≈ histórico'); }
@@ -489,7 +499,18 @@ var CORE = (function () {
       out.situacao = out.score >= cfg.autoScore ? 'auto' : 'sugerido';
       res.push(out);
     });
-    return res;
+    // um PDF que cobre vários contratos equivalentes (ex.: fatura única de vários veículos no mesmo CC)
+    var cm3 = idx(db), extras = [];
+    res.forEach(function (x) {
+      if (!x.lancId || ['auto', 'sugerido'].indexOf(x.situacao) < 0) return;
+      var pr = x.lancId.split('@'), c0 = cm3[pr[0]]; if (!c0) return; var k0 = equivContrato(c0);
+      db.contratos.forEach(function (c) {
+        if (c.id === c0.id || c.ativo === 'N' || equivContrato(c) !== k0) return;
+        var lid = c.id + '@' + pr[1], l = db.lancamentos.filter(function (y) { return y.id === lid; })[0];
+        if (l && !l.arquivo && !tomados[lid] && l.conciliado !== 'H') { tomados[lid] = 1; extras.push({ arq: x.arq, p: x.p, lancId: lid, score: x.score, motivo: x.motivo.concat(['mesmo PDF cobre ' + c.fornecedor]), situacao: x.situacao, opcoes: [lid] }); }
+      });
+    });
+    return res.concat(extras);
   }
   function aplicarVinculo(db, lid, a, p, hoje, aprender) {
     var l = db.lancamentos.filter(function (x) { return x.id === lid; })[0]; if (!l) return false;
