@@ -296,6 +296,9 @@ var CORE = (function () {
   }
 
   /* ---- Migração das abas mensais "PLANILHA DE DESPESAS MMAAAA" ---- */
+  function chaveSync(x) { return chave(x.fornecedor, x.cc, x.servico) + '|' + norm(x.ident); }
+  function excluidosDe(db) { var e = (db.config || []).filter(function (r) { return r.chave === 'excluidos'; })[0]; try { return e && e.valor ? JSON.parse(e.valor) : []; } catch (er) { return []; } }
+  function gravarExcluidos(db, lista) { db.config = (db.config || []).filter(function (r) { return r.chave !== 'excluidos'; }); if (lista.length) db.config.push({ chave: 'excluidos', valor: JSON.stringify(lista) }); }
   function chave(nome, cc, serv) { return norm(nome) + '|' + norm(cc) + '|' + norm(serv); }
   function chave2(nome, cc, serv) { return norm(nome).split(' ').slice(0, 2).join(' ') + '|' + norm(cc) + '|' + norm(serv); }
   function migrar(tabs, hoje) {
@@ -644,6 +647,8 @@ var CORE = (function () {
         dirty.CONTRATOS = 1; r.msg = 'Contrato ' + cc.id + ' salvo'; r.id = cc.id; break;
       }
       case 'excluirContrato': {
+        var cx = db.contratos.filter(function (x) { return x.id === p.id; })[0];
+        if (cx) { var exl = excluidosDe(db), kx = chaveSync(cx); if (exl.indexOf(kx) < 0) exl.push(kx); gravarExcluidos(db, exl); dirty.CONFIG = 1; } // não volta na sincronização com a planilha
         db.contratos = db.contratos.filter(function (x) { return x.id !== p.id; });
         db.lancamentos = db.lancamentos.filter(function (l) { return l.contrato !== p.id || l.lancado === 'S'; });
         dirty.CONTRATOS = dirty.LANCAMENTOS = 1; log('excluirContrato', p.id); r.msg = 'Contrato excluído (lançamentos já realizados foram mantidos)'; break;
@@ -707,7 +712,7 @@ var CORE = (function () {
         var md2 = aplicarRegime(db, its, hoje); dirty.CONTRATOS = 1; if (md2.length) log('enquadramento', md2.join(' | '));
         r.mudancas = md2; r.msg = Object.keys(feito).length + ' CNPJ(s) consultado(s)' + (resta ? ' · ' + resta + ' ficam para a próxima' : '') + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
-      case 'salvarConfig': { db.config = Object.keys(p.config).map(function (k) { return { chave: k, valor: p.config[k] }; }); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
+      case 'salvarConfig': { var exS = excluidosDe(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
       case 'salvarResponsaveis': { db.responsaveis = (p.lista || []).filter(function (x) { return x.nome; }); dirty.RESPONSAVEIS = 1; r.msg = 'Responsáveis salvos'; break; }
       case 'previaAlertas': { r.emails = montarEmails(db, hoje, cfg, !!p.forcar); break; }
       case 'enviarAlertas': {
@@ -718,10 +723,42 @@ var CORE = (function () {
       case 'cobrar': { var m = montarCobranca(db, p.id, hoje, cfg); var e = ctx.enviarEmail(m); r.emails = [m]; log('cobrar', p.id + ' → ' + m.para); r.msg = ctx.envia && e ? 'Cobrança enviada para ' + m.para : 'Cobrança preparada para ' + m.para; break; }
       case 'sincronizarCNPJ': { // planilha original → contratos: CNPJ, nome alterado e contratos novos
         var mg0 = migrar(p.tabs, hoje), shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
+        var cpt = function (x) { return norm(x.fornecedor).replace(/[^A-Z0-9]/g, ''); };
+        // remove contratos duplicados criados antes (mesmo nome sem pontuação, mesmo CC e vencimento): fica o mais antigo, com os lançamentos
+        var gD = {}; db.contratos.forEach(function (x) { var k = cpt(x) + '|' + canonCC(x.cc) + '|' + (+x.diaVenc || 0); (gD[k] = gD[k] || []).push(x); });
+        var nSh = {}; shs.forEach(function (x) { var k = cpt(x) + '|' + canonCC(x.cc) + '|' + (+x.diaVenc || 0); nSh[k] = (nSh[k] || 0) + 1; });
+        var dupl = []; Object.keys(gD).forEach(function (k) { var g = gD[k], qtd = nSh[k] || 0; if (!qtd || g.length <= qtd) return; // só remove o que passa do número de linhas iguais na planilha
+          g.sort(function (a, b) { var la = db.lancamentos.filter(function (l) { return l.contrato === a.id && (l.arquivo || l.lancado === 'S'); }).length, lb = db.lancamentos.filter(function (l) { return l.contrato === b.id && (l.arquivo || l.lancado === 'S'); }).length; return lb - la || (parseInt(dig(a.id), 10) || 0) - (parseInt(dig(b.id), 10) || 0); }); var mant = g[0];
+          g.slice(qtd).forEach(function (d) { db.lancamentos.forEach(function (l) { if (l.contrato !== d.id) return; var nid = lancId(mant.id, l.comp), ex = db.lancamentos.filter(function (y) { return y.id === nid; })[0];
+            if (!ex) { l.id = nid; l.contrato = mant.id; } else { if (!ex.arquivo && l.arquivo) { ex.arquivo = l.arquivo; ex.arqUrl = l.arqUrl; ex.arqData = l.arqData; ex.conciliado = l.conciliado; } if (ex.lancado !== 'S' && l.lancado === 'S') { ex.lancado = 'S'; ex.dtLanc = l.dtLanc; } l.contrato = '#del'; } });
+            ['doc', 'ident', 'vigencia', 'regime', 'razao'].forEach(function (f) { if (!mant[f] && d[f]) mant[f] = d[f]; }); if (String(d.vigencia || '') > String(mant.vigencia || '')) mant.vigencia = d.vigencia;
+            dupl.push(d.id); }); });
+        if (dupl.length) { db.contratos = db.contratos.filter(function (x) { return dupl.indexOf(x.id) < 0; }); db.lancamentos = db.lancamentos.filter(function (l) { return l.contrato !== '#del'; }); dirty.LANCAMENTOS = 1; alt += dupl.length; log('duplicadosRemovidos', dupl.join(', ')); }
         var k1 = function (x) { return chave(x.fornecedor, x.cc, x.servico) + '|' + norm(x.ident); }, idxK = {};
         db.contratos.forEach(function (x) { (idxK[k1(x)] = idxK[k1(x)] || []).push(x); });
         shs.forEach(function (s, i) { var q = (idxK[k1(s)] || []).filter(function (x) { return !usadoDb[x.id]; }); if (q.length) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
+        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && cpt(x) === cpt(s) && canonCC(x.cc) === canonCC(s.cc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (q[0].fornecedor !== s.fornecedor) { q[0].fornecedor = s.fornecedor; alt++; } } });
         shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && canonCC(x.cc) === canonCC(s.cc) && norm(x.servico) === norm(s.servico) && +x.diaProg === +s.diaProg && +x.diaVenc === +s.diaVenc && (!dig(x.doc) || !s.doc || dig(x.doc) === s.doc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (norm(q[0].fornecedor) !== norm(s.fornecedor)) { q[0].fornecedor = s.fornecedor; alt++; } } });
+        shs.forEach(function (s, i) { if (usadoSh[i] || !s.doc) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && normDoc(x.doc) === normDoc(s.doc) && canonCC(x.cc) === canonCC(s.cc) && +x.diaVenc === +s.diaVenc; }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
+        // linhas consolidadas na planilha (ex.: várias placas viraram 1 linha): reaproveita um contrato do mesmo fornecedor e inativa os demais
+        var kF = function (x) { return normDoc(x.doc) || 'N:' + norm(String(x.fornecedor || '').split(/ - |\(/)[0]).replace(/[^A-Z0-9]/g, ''); };
+        var shK = {}; shs.forEach(function (s0, i) { (shK[kF(s0)] = shK[kF(s0)] || []).push(i); });
+        var compH = hoje.slice(0, 7), consol = [], inat = [];
+        var nLig = function (c) { return db.lancamentos.filter(function (l) { return l.contrato === c.id && (l.arquivo || l.lancado === 'S'); }).length; };
+        Object.keys(shK).forEach(function (k) {
+          var rows = shK[k].filter(function (i) { return !usadoSh[i]; }), sobra = db.contratos.filter(function (x) { return !usadoDb[x.id] && x.ativo !== 'N' && kF(x) === k; });
+          if (!sobra.length) return;
+          rows.forEach(function (i) { var s0 = shs[i]; if (!sobra.length) return;
+            sobra.sort(function (a, b) { return (canonCC(b.cc) === canonCC(s0.cc)) - (canonCC(a.cc) === canonCC(s0.cc)) || nLig(b) - nLig(a) || (parseInt(dig(a.id), 10) || 0) - (parseInt(dig(b.id), 10) || 0); });
+            var c = sobra.shift(); usadoDb[c.id] = 1; usadoSh[i] = 1; pares.push([c, s0]);
+            ['fornecedor', 'cc', 'servico', 'forma', 'diaProg', 'diaVenc', 'resp'].forEach(function (f) { if (s0[f] !== '' && s0[f] != null) c[f] = s0[f]; });
+            db.lancamentos.forEach(function (l) { if (l.contrato === c.id && l.comp >= compH && !l.arquivo && l.lancado !== 'S') { var nl = novoLanc(c, l.comp); l.dtProg = nl.dtProg; l.dtVenc = nl.dtVenc; } });
+            consol.push(c.fornecedor + ' (' + c.cc + ')'); alt++; });
+          sobra.forEach(function (c) { if (!shK[k].length) return; c.ativo = 'N'; c.obs = ((c.obs ? c.obs + ' · ' : '') + 'inativado: linha removida da planilha em ' + fmtBR(hoje)); usadoDb[c.id] = 1; inat.push(c.fornecedor + ' (' + c.cc + ')'); alt++;
+            db.lancamentos = db.lancamentos.filter(function (l) { return !(l.contrato === c.id && !l.arquivo && l.lancado !== 'S' && l.conciliado !== 'H'); }); });
+        });
+        if (consol.length || inat.length) { dirty.LANCAMENTOS = 1; log('consolidarPlanilha', 'mantidos: ' + consol.join('; ') + ' | inativados: ' + inat.join('; ')); }
+        var excl = excluidosDe(db); shs.forEach(function (s, i) { if (!usadoSh[i] && excl.indexOf(k1(s)) >= 0) usadoSh[i] = 1; }); // excluídos no painel não voltam
         var renov = [];
         pares.forEach(function (pr) { if (pr[1].doc && dig(pr[0].doc) !== pr[1].doc) { pr[0].doc = pr[1].doc; alt++; } if (pr[1].vigencia && pr[1].vigencia > String(pr[0].vigencia || '')) { renov.push(pr[0].fornecedor + ' (' + pr[0].cc + '): ' + fmtBR(pr[0].vigencia) + ' → ' + fmtBR(pr[1].vigencia)); pr[0].vigencia = pr[1].vigencia; alt++; } });
         if (renov.length) log('vigenciaRenovada', renov.join(' | '));
@@ -730,7 +767,7 @@ var CORE = (function () {
         shs.forEach(function (s, i) { if (usadoSh[i]) return; s.id = 'C' + pad3(++mx); s.ativo = 'S'; db.contratos.push(s); novos++; nomesN.push(s.fornecedor + ' (' + s.cc + ')'); if (s.resp && !exR[norm(s.resp)]) { exR[norm(s.resp)] = 1; (db.responsaveis = db.responsaveis || []).push({ nome: s.resp, email: '' }); dirty.RESPONSAVEIS = 1; } });
         if (novos) { gerarCompetencia(db, hoje.slice(0, 7)); dirty.LANCAMENTOS = 1; }
         if (alt || novos) { dirty.CONTRATOS = 1; log('sincronizarPlanilha', alt + ' alteração(ões), ' + novos + ' contrato(s) novo(s): ' + nomesN.join('; ')); }
-        r.alterados = alt + novos; r.novos = nomesN; r.renovados = renov; r.msg = (alt || novos) ? 'Planilha sincronizada: ' + (renov.length ? renov.length + ' vigência(s) renovada(s), ' : '') + (alt - renov.length) + ' CNPJ/nome atualizado(s), ' + novos + ' contrato(s) novo(s)' : 'Contratos já estavam iguais à planilha'; break;
+        r.alterados = alt + novos; r.novos = nomesN; r.renovados = renov; r.inativados = inat; r.msg = (alt || novos) ? 'Planilha sincronizada: ' + (renov.length ? renov.length + ' vigência(s) renovada(s), ' : '') + (alt - renov.length - inat.length) + ' contrato(s) atualizado(s), ' + novos + ' novo(s)' + (inat.length ? ', ' + inat.length + ' inativado(s) por terem saído da planilha' : '') : 'Contratos já estavam iguais à planilha'; break;
       }
       case 'migrar': {
         var mg = migrar(p.tabs, hoje);
@@ -752,7 +789,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.13d', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.14c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
