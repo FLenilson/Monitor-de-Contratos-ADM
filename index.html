@@ -297,6 +297,8 @@ var CORE = (function () {
 
   /* ---- Migração das abas mensais "PLANILHA DE DESPESAS MMAAAA" ---- */
   function chaveSync(x) { return chave(x.fornecedor, x.cc, x.servico) + '|' + norm(x.ident); }
+  function listaCfg(db, k) { var e = (db.config || []).filter(function (r) { return r.chave === k; })[0]; try { return e && e.valor ? JSON.parse(e.valor) : []; } catch (er) { return []; } }
+  function gravarCfg(db, k, lista) { db.config = (db.config || []).filter(function (r) { return r.chave !== k; }); if (lista.length) db.config.push({ chave: k, valor: JSON.stringify(lista) }); }
   function excluidosDe(db) { var e = (db.config || []).filter(function (r) { return r.chave === 'excluidos'; })[0]; try { return e && e.valor ? JSON.parse(e.valor) : []; } catch (er) { return []; } }
   function gravarExcluidos(db, lista) { db.config = (db.config || []).filter(function (r) { return r.chave !== 'excluidos'; }); if (lista.length) db.config.push({ chave: 'excluidos', valor: JSON.stringify(lista) }); }
   function chave(nome, cc, serv) { return norm(nome) + '|' + norm(cc) + '|' + norm(serv); }
@@ -382,7 +384,7 @@ var CORE = (function () {
       if (mmx) r.comp = (aax || +(r.venc || r.data || '').slice(0, 4) || new Date().getFullYear()) + '-' + pad(mmx);
       var segs3 = String(caminho || '').split(/[\\\/]/).slice(0, -1), dfx = segs3.length ? segs3[segs3.length - 1].match(/^\s*(\d{1,2})[.\-_ ](\d{1,2})(?:[.\-_ ](\d{2,4}))?\s*$/) : null;
       if (dfx && +dfx[1] <= 31 && +dfx[2] >= 1 && +dfx[2] <= 12) { var yx = dfx[3] ? (+dfx[3] < 100 ? 2000 + +dfx[3] : +dfx[3]) : (aax || +(r.venc || '').slice(0, 4) || new Date().getFullYear()); r.dataPasta = iso(yx, +dfx[2], +dfx[1]); }
-      else if (r.venc) r.comp = r.venc.slice(0, 7);
+      else if (r.venc && !r.comp) r.comp = r.venc.slice(0, 7);
       r.data = r.dataPasta || toISO(dataArq) || r.venc || '';
       return r;
     }
@@ -436,7 +438,7 @@ var CORE = (function () {
   function historicoValores(db) { var h = {}; db.lancamentos.forEach(function (l) { var v = numBR(l.valor); if (v != null) (h[l.contrato] = h[l.contrato] || []).push(v); }); return h; }
   function media(a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
   function conciliar(db, arquivos, hoje, cfg) {
-    var tomados = {};
+    var tomados = {}, rejeit = {}; listaCfg(db, 'rejeitados').forEach(function (k) { rejeit[k] = 1; });
     var ccs = listaCC(db), hist = historicoValores(db), jaVinc = {}, res = [];
     db.lancamentos.forEach(function (l) { if (l.arquivo) jaVinc[norm(l.arquivo)] = l.id; });
     var porDoc = {}; db.contratos.forEach(function (c) { var d = normDoc(c.doc); if (d) (porDoc[d] = porDoc[d] || []).push(c); });
@@ -483,7 +485,7 @@ var CORE = (function () {
       // lançamento em aberto mais próximo da data da pasta
       var ref = p.venc || p.data || (p.comp ? p.comp + '-15' : hoje), ids = {};
       cands.forEach(function (c) { ids[c.id] = 1; });
-      var ls = db.lancamentos.filter(function (l) { return ids[l.contrato] && !l.arquivo && l.conciliado !== 'H' && !tomados[l.id] && (!p.comp || l.comp <= p.comp && l.comp >= compSoma(p.comp, -1) || l.comp === compSoma(p.comp, 1) && p.venc && Math.abs(dias(l.dtVenc, p.venc)) <= 5); })
+      var ls = db.lancamentos.filter(function (l) { return ids[l.contrato] && !l.arquivo && l.conciliado !== 'H' && !tomados[l.id] && !rejeit[norm(a.nome) + '>' + l.id] && (!p.comp || l.comp <= p.comp && l.comp >= compSoma(p.comp, -1) || l.comp === compSoma(p.comp, 1) && p.venc && Math.abs(dias(l.dtVenc, p.venc)) <= 5); })
         .map(function (l) { return { l: l, d: Math.abs(dias(p.venc ? l.dtVenc : l.dtProg, ref)) + (p.comp && l.comp !== p.comp ? 15 : 0) }; })
         .filter(function (x) { return x.d <= 45; }).sort(function (x, y) { return x.d - y.d; });
       if (rodada === 1) { // 1ª rodada: só vínculos com vencimento batendo (±5 dias); demais arquivos ficam para a 2ª
@@ -557,7 +559,7 @@ var CORE = (function () {
     var ci = idx(db), out = [], c0 = compSoma(hoje.slice(0, 7), -3), c1 = compSoma(hoje.slice(0, 7), 1);
     db.lancamentos.forEach(function (l) {
       if (l.comp < c0 || l.comp > c1) return;
-      var c = ci[l.contrato]; if (!c) return; var s = statusLanc(l, hoje, cfg); if (s.n < 2) return;
+      var c = ci[l.contrato]; if (!c || c.ativo === 'N') return; var s = statusLanc(l, hoje, cfg); if (s.n < 2) return;
       var tipo = { verif: 'Verificar documento', atras: 'Documento atrasado', venc: 'Vencido sem lançamento', avenc: 'Vence sem lançamento' }[s.k] || s.t;
       out.push({ n: s.n, k: s.k, tipo: tipo, st: s.t, resp: c.resp, lancId: l.id, contrato: c.id, forn: c.fornecedor, cc: c.cc, serv: c.servico, canal: c.canal, ident: c.ident, dtProg: l.dtProg, dtVenc: l.dtVenc, comp: l.comp, data: s.k === 'verif' || s.k === 'atras' ? l.dtProg : l.dtVenc });
     });
@@ -592,7 +594,7 @@ var CORE = (function () {
       var g = grupos[k], para = emails[k] || cfg.emailGestor || '';
       var n3 = g.itens.filter(function (a) { return a.n === 3; }).length;
       msgs.push({ para: para, cc: emails[k] && cfg.emailGestor && n3 ? cfg.emailGestor : '', resp: g.nome, qtd: g.itens.length, assunto: '[Contratos] ' + g.itens.length + ' pendência(s) para verificação' + (n3 ? ' · ' + n3 + ' crítica(s)' : '') + ' — ' + fmtBR(hoje),
-        html: '<div style="font:14px Arial,sans-serif;color:#15241F"><p>Olá, ' + esc(g.nome) + '.</p><p>Os documentos abaixo precisam ser <b>verificados e lançados</b> (contas recorrentes mensais):</p>' + tabelaEmail(g.itens) + '<p style="color:#5B6B66;font-size:12px">Após lançar, salve o PDF na pasta de documentos lançados no padrão <b>CNPJ_NF_VALOR_CENTRO DE CUSTO.pdf</b> para a conciliação automática.</p></div>',
+        html: '<div style="font:14px Arial,sans-serif;color:#15241F"><p>Olá, ' + esc(g.nome) + '.</p><p>Os documentos abaixo precisam ser <b>verificados e lançados</b> (contas recorrentes mensais):</p>' + tabelaEmail(g.itens) + '<p style="color:#5B6B66;font-size:12px">Depois de lançar no SOLUS, o PDF salvo na pasta de lançamentos é reconhecido automaticamente na próxima leitura da pasta.</p></div>',
         texto: 'Olá, ' + g.nome + '.\nPendências de verificação/lançamento:\n' + textoEmail(g.itens) });
     });
     if (cfg.emailGestor && al.length) msgs.push({ para: cfg.emailGestor, cc: '', resp: 'Gestor (consolidado)', qtd: al.length, assunto: '[Contratos] Consolidado — ' + al.length + ' pendência(s) — ' + fmtBR(hoje), html: '<div style="font:14px Arial,sans-serif"><p>Resumo consolidado das pendências de contratos recorrentes.</p>' + tabelaEmail(al) + '</div>', texto: textoEmail(al) });
@@ -600,7 +602,8 @@ var CORE = (function () {
   }
   function montarCobranca(db, lid, hoje, cfg) {
     var l = db.lancamentos.filter(function (x) { return x.id === lid; })[0]; if (!l) throw new Error('Lançamento não encontrado');
-    var c = idx(db)[l.contrato], s = statusLanc(l, hoje, cfg), r = (db.responsaveis || []).filter(function (x) { return norm(x.nome) === norm(c.resp); })[0];
+    var c = idx(db)[l.contrato]; if (!c) throw new Error('Contrato deste lançamento não existe mais');
+    var s = statusLanc(l, hoje, cfg), r = (db.responsaveis || []).filter(function (x) { return norm(x.nome) === norm(c.resp); })[0];
     var para = (r && r.email) || cfg.emailGestor; if (!para) throw new Error('Cadastre o e-mail de ' + (c.resp || 'responsável') + ' em Configuração.');
     var item = { n: s.n, k: s.k, tipo: 'Verificar e lançar documento', st: s.t, forn: c.fornecedor, cc: c.cc, serv: c.servico, canal: c.canal, ident: c.ident, dtProg: l.dtProg, dtVenc: l.dtVenc };
     return { para: para, cc: '', resp: c.resp, qtd: 1, assunto: '[Contratos] Verificar documento: ' + c.fornecedor + ' — ' + c.cc + ' — venc. ' + fmtBR(l.dtVenc), html: '<div style="font:14px Arial,sans-serif"><p>Olá, ' + esc(c.resp) + '.</p><p>Favor verificar e lançar o documento abaixo (competência ' + fmtComp(l.comp) + ', situação: <b>' + esc(s.t) + '</b>).</p>' + tabelaEmail([item]) + '</div>', texto: textoEmail([item]) };
@@ -632,6 +635,12 @@ var CORE = (function () {
   }
 
   /* ---- Executor único de ações (mesma regra no navegador e no servidor) ---- */
+  function coletarRegime(db, p, ctx) { // consulta a Receita (lenta): no servidor roda sem travar a planilha
+    p = p || {};
+    var alvo = db.contratos.filter(function (x) { return x.ativo !== 'N' && dig(x.doc).length === 14 && (!p.ids || p.ids.indexOf(x.id) >= 0); }).sort(function (a, b) { return String(a.regimeEm || '') < String(b.regimeEm || '') ? -1 : 1; }), feito = {}, its = [], t0 = Date.now(), resta = 0, okN = 0, errN = 0, err1 = '', bloq = '';
+    alvo.forEach(function (x) { var d = dig(x.doc); if (feito[d] === undefined) { if (Date.now() - t0 > 240000 || bloq) { resta++; return; } try { feito[d] = interpretarCNPJ(ctx.buscarCNPJ(d)); okN++; } catch (e) { var em = String(e.message || e); errN++; if (!err1) err1 = em.slice(0, 160); if (/UrlFetch|permiss|authoriz|script\.external_request/i.test(em)) { bloq = em.slice(0, 160); feito[d] = { erro: 'falta autorizar a consulta (Apps Script › executar autorizarConsultas) · ' + em.slice(0, 100) }; } else feito[d] = { erro: em.slice(0, 120) }; } } if (feito[d]) its.push(Object.assign({ id: x.id }, feito[d])); });
+    return { its: its, msg: (bloq ? 'Google sem permissão para consultar a Receita: ' + bloq + ' — ' : '') + okN + ' CNPJ(s) consultado(s) com sucesso' + (errN ? ' · ' + errN + ' com erro (' + err1 + ')' : '') + (resta ? ' · ' + resta + ' ficam para a próxima' : '') };
+  }
   function executar(db, acao, p, ctx) {
     p = p || {}; var hoje = ctx.hoje, cfg = cfgDe(db), dirty = {}, r = { ok: true, msg: '' };
     function log(a, d) { (db.log = db.log || []).push({ quando: hoje + ' ' + (ctx.hora || ''), acao: a, detalhe: String(d).slice(0, 400) }); dirty.LOG = 1; }
@@ -659,7 +668,7 @@ var CORE = (function () {
           var l = mp[it.id]; if (!l) return; var f = it.campos;
           if ('lancado' in f && f.lancado !== l.lancado) l.dtLanc = f.lancado === 'S' ? (f.dtLanc || hoje) : '';
           Object.keys(f).forEach(function (k) { if (k !== 'id' && CAMPOS.LANCAMENTOS.indexOf(k) >= 0) l[k] = k === 'valor' ? (numBR(f[k]) == null ? '' : numBR(f[k])) : f[k]; });
-          l.conciliado = l.conciliado === 'H' ? 'H' : (l.arquivo ? 'S' : '');
+          l.conciliado = l.conciliado === 'H' || l.conciliado === 'M' && l.arquivo ? l.conciliado : (l.arquivo ? 'S' : '');
           l.atualizado = hoje + (ctx.usuario ? ' ' + ctx.usuario : '');
         });
         dirty.LANCAMENTOS = 1; r.msg = (p.itens || []).length + ' lançamento(s) atualizado(s)'; break;
@@ -702,18 +711,16 @@ var CORE = (function () {
         dirty.LANCAMENTOS = dirty.CONTRATOS = 1; log('vincular', ok); r.msg = ok + ' documento(s) vinculado(s)'; break;
       }
       case 'desvincular': {
-        db.lancamentos.forEach(function (l) { if (l.id === p.id) { l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; } }); dirty.LANCAMENTOS = 1; r.msg = 'PDF desvinculado'; break;
+        db.lancamentos.forEach(function (l) { if (l.id === p.id) { if (l.arquivo) { var rj = listaCfg(db, 'rejeitados'), kr = norm(l.arquivo) + '>' + l.id; if (rj.indexOf(kr) < 0) rj.push(kr); gravarCfg(db, 'rejeitados', rj.slice(-300)); dirty.CONFIG = 1; } l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; } }); dirty.LANCAMENTOS = 1; r.msg = 'PDF desvinculado — a leitura da pasta não liga mais este PDF a este lançamento'; break;
       }
-      case 'salvarRegime': { var md = aplicarRegime(db, p.itens || [], hoje); dirty.CONTRATOS = 1; if (md.length) log('enquadramento', md.join(' | ')); r.mudancas = md; r.msg = (p.itens || []).filter(function (x) { return !x.erro; }).length + ' enquadramento(s) atualizado(s)' + (md.length ? ' · ' + md.length + ' alteração(ões)' : ''); break; }
+      case 'salvarRegime': { var md = aplicarRegime(db, p.itens || [], hoje); dirty.CONTRATOS = 1; if (md.length) log('enquadramento', md.join(' | ')); r.mudancas = md; r.msg = (p.msg || ((p.itens || []).filter(function (x) { return !x.erro; }).length + ' enquadramento(s) atualizado(s)')) + (md.length ? ' · ' + md.length + ' alteração(ões)' : ''); break; }
       case 'consultarRegime': {
         if (!ctx.buscarCNPJ) throw new Error('Consulta indisponível neste modo');
-        var alvo = db.contratos.filter(function (x) { return x.ativo !== 'N' && dig(x.doc).length === 14 && (!p.ids || p.ids.indexOf(x.id) >= 0); }).sort(function (a, b) { return String(a.regimeEm || '') < String(b.regimeEm || '') ? -1 : 1; }), feito = {}, its = [], t0 = Date.now(), resta = 0, okN = 0, errN = 0, err1 = '', bloq = '';
-        alvo.forEach(function (x) { var d = dig(x.doc); if (feito[d] === undefined) { if (Date.now() - t0 > 240000) { resta++; return; } if (bloq) { resta++; return; } try { feito[d] = interpretarCNPJ(ctx.buscarCNPJ(d)); okN++; } catch (e) { var em = String(e.message || e); errN++; if (!err1) err1 = em.slice(0, 160); if (/UrlFetch|permiss|authoriz|script\.external_request/i.test(em)) { bloq = em.slice(0, 160); feito[d] = { erro: 'falta autorizar a consulta (Apps Script › executar autorizarConsultas) · ' + em.slice(0, 100) }; } else feito[d] = { erro: em.slice(0, 120) }; } } if (feito[d]) its.push(Object.assign({ id: x.id }, feito[d])); });
-        var md2 = aplicarRegime(db, its, hoje); dirty.CONTRATOS = 1; if (md2.length) log('enquadramento', md2.join(' | '));
-        r.mudancas = md2; r.msg = (bloq ? 'Google sem permissão para consultar a Receita: ' + bloq + ' — ' : '') + okN + ' CNPJ(s) consultado(s) com sucesso' + (errN ? ' · ' + errN + ' com erro (' + err1 + ')' : '') + (resta ? ' · ' + resta + ' ficam para a próxima' : '') + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
+        var q0 = coletarRegime(db, p, ctx), md2 = aplicarRegime(db, q0.its, hoje); dirty.CONTRATOS = 1; if (md2.length) log('enquadramento', md2.join(' | '));
+        r.mudancas = md2; r.msg = q0.msg + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
       case 'restaurarExcluido': { var exR2 = excluidosDe(db).filter(function (k) { return k !== p.chave; }); gravarExcluidos(db, exR2); dirty.CONFIG = 1; r.msg = 'Linha liberada: o contrato volta a ser cadastrado a partir da planilha'; break; }
-      case 'salvarConfig': { var exS = excluidosDe(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
+      case 'salvarConfig': { var exS = excluidosDe(db), rjS = listaCfg(db, 'rejeitados'); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos' && k !== 'rejeitados'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); gravarCfg(db, 'rejeitados', rjS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
       case 'salvarResponsaveis': { db.responsaveis = (p.lista || []).filter(function (x) { return x.nome; }); dirty.RESPONSAVEIS = 1; r.msg = 'Responsáveis salvos'; break; }
       case 'previaAlertas': { r.emails = montarEmails(db, hoje, cfg, !!p.forcar); break; }
       case 'enviarAlertas': {
@@ -755,6 +762,13 @@ var CORE = (function () {
         shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && cpt(x) === cpt(s) && canonCC(x.cc) === canonCC(s.cc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (q[0].fornecedor !== s.fornecedor) { q[0].fornecedor = s.fornecedor; alt++; } } });
         shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && canonCC(x.cc) === canonCC(s.cc) && norm(x.servico) === norm(s.servico) && +x.diaProg === +s.diaProg && +x.diaVenc === +s.diaVenc && (!dig(x.doc) || !s.doc || dig(x.doc) === s.doc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (norm(q[0].fornecedor) !== norm(s.fornecedor)) { q[0].fornecedor = s.fornecedor; alt++; } } });
         shs.forEach(function (s, i) { if (usadoSh[i] || !s.doc) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && normDoc(x.doc) === normDoc(s.doc) && canonCC(x.cc) === canonCC(s.cc) && +x.diaVenc === +s.diaVenc; }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
+        // contrato inativado automaticamente volta a valer se a linha continua (ou voltou) na planilha
+        var reat = [], reAt = function (c) { c.ativo = 'S'; c.obs = String(c.obs || '').replace(/( · )?inativado: linha removida da planilha em [\d\/]+/g, '').trim(); reat.push(c.id); alt++; };
+        pares.forEach(function (pr) { if (pr[0].ativo === 'N' && /inativado: linha removida da planilha/.test(pr[0].obs || '')) reAt(pr[0]); });
+        shs.forEach(function (s0, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && x.ativo === 'N' && /inativado: linha removida da planilha/.test(x.obs || '') && canonCC(x.cc) === canonCC(s0.cc) && +x.diaVenc === +s0.diaVenc && (s0.doc ? normDoc(x.doc) === normDoc(s0.doc) : cpt(x) === cpt(s0)); });
+          if (!q.length) return; var c = q[0]; reAt(c); usadoDb[c.id] = 1; usadoSh[i] = 1; pares.push([c, s0]);
+          var exq = excluidosDe(db), kq = k1(s0); if (exq.indexOf(kq) >= 0) { gravarExcluidos(db, exq.filter(function (k) { return k !== kq; })); dirty.CONFIG = 1; } });
+        if (reat.length) { gerarCompetencia(db, hoje.slice(0, 7)); dirty.LANCAMENTOS = 1; log('reativados', reat.join(', ')); }
         // linhas consolidadas na planilha (ex.: várias placas viraram 1 linha): reaproveita um contrato do mesmo fornecedor e inativa os demais
         var kF = function (x) { return normDoc(x.doc) || 'N:' + norm(String(x.fornecedor || '').split(/ - |\(/)[0]).replace(/[^A-Z0-9]/g, ''); };
         var shK = {}; shs.forEach(function (s0, i) { (shK[kF(s0)] = shK[kF(s0)] || []).push(i); });
@@ -762,7 +776,7 @@ var CORE = (function () {
         var nLig = function (c) { return db.lancamentos.filter(function (l) { return l.contrato === c.id && (l.arquivo || l.lancado === 'S'); }).length; };
         Object.keys(shK).forEach(function (k) {
           var rows = shK[k].filter(function (i) { return !usadoSh[i]; }), sobra = db.contratos.filter(function (x) { return !usadoDb[x.id] && x.ativo !== 'N' && kF(x) === k; });
-          if (!sobra.length) return;
+          if (!sobra.length || !rows.length) return; // sem linha nova/alterada desse fornecedor: sobras aparecem como "só no painel" (não inativa)
           rows.forEach(function (i) { var s0 = shs[i]; if (!sobra.length) return;
             sobra.sort(function (a, b) { return (canonCC(b.cc) === canonCC(s0.cc)) - (canonCC(a.cc) === canonCC(s0.cc)) || nLig(b) - nLig(a) || (parseInt(dig(a.id), 10) || 0) - (parseInt(dig(b.id), 10) || 0); });
             var c = sobra.shift(); usadoDb[c.id] = 1; usadoSh[i] = 1; pares.push([c, s0]);
@@ -807,7 +821,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.15c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.16', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -949,7 +963,7 @@ function vLanc() {
    <td><label class="tgl"><input type="checkbox" class="tg" data-f="lancado" ${l.lancado === 'S' ? 'checked' : ''} aria-label="Lançado">${l.dtLanc ? diaBR(l.dtLanc) : ''}</label></td>
    <td><input class="in sm w-nf" data-f="nf" value="${esc(l.nf)}" aria-label="NF"></td>
    <td><input class="in sm w-v" data-f="valor" value="${l.valor === '' || l.valor == null ? '' : esc(String(l.valor).replace('.', ','))}" inputmode="decimal" aria-label="Valor"></td>
-   <td>${l.arquivo ? `${l.arqUrl ? `<a href="${esc(l.arqUrl)}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
+   <td>${l.arquivo ? `${l.arqUrl ? `<a href="${/^https?:/i.test(l.arqUrl) ? esc(l.arqUrl) : '#'}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
    <td>${s.k !== 'conc' && s.k !== 'hist' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
   </tbody></table></div></section>`;
 }
@@ -1299,6 +1313,7 @@ async function boot() {
   if (modo() !== 'local' && DB.contratos.length) lerPastaSolus(false);
 }
 boot();
+setInterval(() => { const d = new Date(); if (C.iso(d.getFullYear(), d.getMonth() + 1, d.getDate()) !== HOJE) location.reload(); }, 600000); // virou o dia com o painel aberto: recarrega
 </script>
 
 </body></html>
