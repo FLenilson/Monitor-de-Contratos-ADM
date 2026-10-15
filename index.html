@@ -712,6 +712,7 @@ var CORE = (function () {
         var md2 = aplicarRegime(db, its, hoje); dirty.CONTRATOS = 1; if (md2.length) log('enquadramento', md2.join(' | '));
         r.mudancas = md2; r.msg = Object.keys(feito).length + ' CNPJ(s) consultado(s)' + (resta ? ' · ' + resta + ' ficam para a próxima' : '') + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
+      case 'restaurarExcluido': { var exR2 = excluidosDe(db).filter(function (k) { return k !== p.chave; }); gravarExcluidos(db, exR2); dirty.CONFIG = 1; r.msg = 'Linha liberada: o contrato volta a ser cadastrado a partir da planilha'; break; }
       case 'salvarConfig': { var exS = excluidosDe(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
       case 'salvarResponsaveis': { db.responsaveis = (p.lista || []).filter(function (x) { return x.nome; }); dirty.RESPONSAVEIS = 1; r.msg = 'Responsáveis salvos'; break; }
       case 'previaAlertas': { r.emails = montarEmails(db, hoje, cfg, !!p.forcar); break; }
@@ -722,6 +723,9 @@ var CORE = (function () {
       }
       case 'cobrar': { var m = montarCobranca(db, p.id, hoje, cfg); var e = ctx.enviarEmail(m); r.emails = [m]; log('cobrar', p.id + ' → ' + m.para); r.msg = ctx.envia && e ? 'Cobrança enviada para ' + m.para : 'Cobrança preparada para ' + m.para; break; }
       case 'sincronizarCNPJ': { // planilha original → contratos: CNPJ, nome alterado e contratos novos
+        var cmA = idx(db), nL0 = db.lancamentos.length; // lançamentos em aberto de contratos inativos/excluídos saem da competência
+        db.lancamentos = db.lancamentos.filter(function (l) { var c = cmA[l.contrato]; return (c && c.ativo !== 'N') || l.arquivo || l.lancado === 'S' || l.conciliado === 'H'; });
+        if (db.lancamentos.length !== nL0) dirty.LANCAMENTOS = 1;
         var mg0 = migrar(p.tabs, hoje), shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
         var cpt = function (x) { return norm(x.fornecedor).replace(/[^A-Z0-9]/g, ''); };
         // remove contratos duplicados criados antes (mesmo nome sem pontuação, mesmo CC e vencimento): fica o mais antigo, com os lançamentos
@@ -764,9 +768,12 @@ var CORE = (function () {
         if (renov.length) log('vigenciaRenovada', renov.join(' | '));
         var mx = 0; db.contratos.forEach(function (x) { mx = Math.max(mx, parseInt(dig(x.id), 10) || 0); });
         var exR = {}; (db.responsaveis || []).forEach(function (x) { exR[norm(x.nome)] = 1; });
-        shs.forEach(function (s, i) { if (usadoSh[i]) return; s.id = 'C' + pad3(++mx); s.ativo = 'S'; db.contratos.push(s); novos++; nomesN.push(s.fornecedor + ' (' + s.cc + ')'); if (s.resp && !exR[norm(s.resp)]) { exR[norm(s.resp)] = 1; (db.responsaveis = db.responsaveis || []).push({ nome: s.resp, email: '' }); dirty.RESPONSAVEIS = 1; } });
+        var criados = {}; shs.forEach(function (s, i) { if (usadoSh[i]) return; criados[i] = 1; s.id = 'C' + pad3(++mx); s.ativo = 'S'; db.contratos.push(s); novos++; nomesN.push(s.fornecedor + ' (' + s.cc + ')'); if (s.resp && !exR[norm(s.resp)]) { exR[norm(s.resp)] = 1; (db.responsaveis = db.responsaveis || []).push({ nome: s.resp, email: '' }); dirty.RESPONSAVEIS = 1; } });
         if (novos) { gerarCompetencia(db, hoje.slice(0, 7)); dirty.LANCAMENTOS = 1; }
         if (alt || novos) { dirty.CONTRATOS = 1; log('sincronizarPlanilha', alt + ' alteração(ões), ' + novos + ' contrato(s) novo(s): ' + nomesN.join('; ')); }
+        var exclF = excluidosDe(db), prs = {}; pares.forEach(function (pr) { prs[shs.indexOf(pr[1])] = pr[0]; });
+        r.relatorio = { linhas: shs.map(function (s, i) { var c = prs[i]; return { fornecedor: s.fornecedor, cc: s.cc, doc: s.doc, venc: s.diaVenc, contrato: c ? c.id : '', nomeContrato: c ? c.fornecedor : '', ativo: c ? c.ativo !== 'N' : false, novo: !!criados[i], excluido: !c && !criados[i] && exclF.indexOf(k1(s)) >= 0, chave: k1(s) }; }),
+          soPainel: db.contratos.filter(function (x) { return x.ativo !== 'N' && !usadoDb[x.id] && !shs.some(function (s, i) { return criados[i] && s.id === x.id; }); }).map(function (x) { return { id: x.id, fornecedor: x.fornecedor, cc: x.cc }; }) };
         r.alterados = alt + novos; r.novos = nomesN; r.renovados = renov; r.inativados = inat; r.msg = (alt || novos) ? 'Planilha sincronizada: ' + (renov.length ? renov.length + ' vigência(s) renovada(s), ' : '') + (alt - renov.length - inat.length) + ' contrato(s) atualizado(s), ' + novos + ' novo(s)' + (inat.length ? ', ' + inat.length + ' inativado(s) por terem saído da planilha' : '') : 'Contratos já estavam iguais à planilha'; break;
       }
       case 'migrar': {
@@ -789,7 +796,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.14c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.15', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -953,7 +960,7 @@ function vContratos() {
    <select id="cvig">${[['', 'Toda vigência'], ['alerta', 'Qualificação / vencidos'], ['vencido', 'Vencidos'], ['qualif', 'Enviar p/ qualificação'], ['vig', 'Vigentes'], ['ind', 'Indeterminado'], ['semdoc', 'Sem CNPJ/CPF'], ['simples', 'Simples / MEI'], ['naosimples', 'Não optante'], ['semreg', 'Enquadramento não consultado']].map(([v, t]) => opt(v, FC.vig, t)).join('')}</select>
    <select id="cat">${[['S', 'Ativos'], ['N', 'Inativos'], ['', 'Todos']].map(([v, t]) => opt(v, FC.ativo, t)).join('')}</select>
    <span class="hint">${cs.length} contrato(s)</span>
-   <button class="btn" data-act="regTodos" style="margin-left:auto" title="Consulta a Receita (BrasilAPI) para todos os contratos ativos com CNPJ">↻ Consultar enquadramento</button>
+   <button class="btn" data-act="cmpPlan" title="Confere linha a linha a Página1 contra os contratos do painel">⇄ Comparar com a planilha</button><button class="btn" data-act="regTodos" style="margin-left:auto" title="Consulta a Receita (BrasilAPI) para todos os contratos ativos com CNPJ">↻ Consultar enquadramento</button>
    <button class="btn pri" data-act="novoC">+ Novo contrato</button>
   </div><div class="scroll"><table class="t"><thead><tr><th>ID</th><th>Fornecedor</th><th>CNPJ / CPF</th><th>Enquadramento</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Vigência</th><th>Situação</th><th>Ativo</th><th></th></tr></thead><tbody>
   ${cs.map(({ c, v }) => `<tr data-cid="${c.id}"><td class="num hint">${c.id}</td><td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
@@ -1163,6 +1170,20 @@ function porque(id) {
   ${its.length ? `<div style="max-height:55vh;overflow:auto"><table class="tbl"><thead><tr><th>Arquivo</th><th>Venc.</th><th>Valor</th><th>Resultado</th></tr></thead><tbody>${its.map(x => `<tr><td style="font-size:11px;word-break:break-all">${esc(x.arq.caminho || x.arq.nome)}</td><td>${x.p.venc ? C.fmtBR(x.p.venc) : '—'}</td><td>${x.p.valor != null ? C.moeda(x.p.valor) : '—'}</td><td><b>${lab[x.situacao] || x.situacao}${x.aplicado ? ' ✓' : ''}</b><div class="sub">${esc(quem(x.lancId))}</div><div class="sub">${esc((x.motivo || []).join(' · '))}</div></td></tr>`).join('')}</tbody></table></div>` : '<p><b>Nenhum PDF deste fornecedor foi encontrado na leitura.</b> Confira se a pasta escolhida é a "1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS" (ou a pasta 2026 acima dela).</p>'}
   <p class="hint">Copie esta tela (print) e envie se precisar de ajuda.</p>`);
 }
+async function compararPlanilha() {
+  if (modo() === 'local') { toast('A comparação lê a Página1 do Google Sheets: abra o painel conectado à planilha.', 1); return; }
+  const r = await act('compararPlanilha', {}, { noRender: true, silent: true }); if (!r || !r.ok || !r.rel) { toast('Não consegui comparar (publique a versão nova do Code.gs).', 1); return; }
+  const L = r.rel.linhas, ok = L.filter(x => x.contrato && x.ativo), exc = L.filter(x => x.excluido), ina = L.filter(x => x.contrato && !x.ativo), nov = L.filter(x => x.novo), sp = r.rel.soPainel;
+  const tr = (x, st, btn) => `<tr><td>${esc(x.fornecedor)}<div class="sub">${esc(x.cc)} · venc dia ${esc(x.venc || '')} · ${esc(C.fmtDoc ? C.fmtDoc(x.doc || '') : x.doc || '')}</div></td><td>${st}</td><td>${btn || ''}</td></tr>`;
+  modal('Página1 × contratos do painel', `<p><b>${L.length}</b> linha(s) na Página1 · <b>${ok.length}</b> com contrato ativo${exc.length ? ` · <b style="color:var(--crit)">${exc.length} excluída(s) no painel</b>` : ''}${ina.length ? ` · <b>${ina.length}</b> com contrato inativo` : ''}${nov.length ? ` · <b>${nov.length}</b> serão cadastradas` : ''}${sp.length ? ` · <b>${sp.length}</b> contrato(s) ativo(s) que não estão na Página1` : ''}</p>
+  <div style="max-height:60vh;overflow:auto"><table class="tbl"><tbody>
+  ${exc.map(x => tr(x, '<b style="color:var(--crit)">Excluída no painel</b><div class="sub">não vira contrato</div>', `<button class="btn sm" data-act="restEx" data-k="${esc(x.chave)}">Trazer de volta</button>`)).join('')}
+  ${ina.map(x => tr(x, '<b>Contrato inativo</b><div class="sub">' + esc(x.contrato) + '</div>')).join('')}
+  ${nov.map(x => tr(x, '<b>Será cadastrada</b>')).join('')}
+  ${sp.map(x => tr({ fornecedor: x.fornecedor, cc: x.cc }, '<b>Só no painel</b><div class="sub">' + esc(x.id) + ' · não está na Página1</div>', '<span class="hint">inative ou exclua se não existir mais</span>')).join('')}
+  ${ok.map(x => tr(x, 'OK · ' + esc(x.contrato) + (x.nomeContrato && C.norm(x.nomeContrato) !== C.norm(x.fornecedor) ? '<div class="sub">painel: ' + esc(x.nomeContrato) + '</div>' : ''))).join('')}
+  </tbody></table></div>`);
+}
 async function trocarPastaSolus() { await IDB.set('pastaSolus', null); lerPastaSolus(true); }
 function renderTabsOnly() { if (ABA === 'painel') render(); }
 
@@ -1209,6 +1230,8 @@ document.addEventListener('click', async e => {
   else if (a === 'regTodos') consultarRegimes(null);
   else if (a === 'reg1') { await consultarRegimes([id]); const c = DB.contratos.find(x => x.id === id); if (c && $('#regBox')) $('#regBox').innerHTML = celRegime(c); }
   else if (a === 'editC') formContrato(DB.contratos.find(c => c.id === id));
+  else if (a === 'cmpPlan') compararPlanilha();
+  else if (a === 'restEx') { const r = await act('restaurarExcluido', { chave: b.dataset.k }, { noRender: true }); if (r && r.ok) { await act('carregar', {}, { noRender: true, silent: true }); compararPlanilha(); } }
   else if (a === 'exC1') $('#exWrap').innerHTML = `<button class="btn" type="button" data-act="exC2" style="border-color:var(--crit);color:var(--crit)">Confirmar exclusão</button>`;
   else if (a === 'exC2') { const r = await act('excluirContrato', { id: $('#fC [name=id]').value }); if (r && r.ok) fecharModal(); }
   else if (a === 'lerDrive') conciliarArqs([]);
