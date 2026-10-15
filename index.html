@@ -252,7 +252,7 @@ var CORE = (function () {
     var ci = idx(db), mud = [];
     itens.forEach(function (it) {
       var c = ci[it.id]; if (!c) return;
-      if (it.erro) { c.regimeObs = 'Falha na consulta: ' + it.erro; c.regimeEm = hoje; return; }
+      if (it.erro) { c.regimeObs = 'Falha na consulta de ' + fmtBR(hoje) + ': ' + it.erro + (c.regime ? ' (mantido o último enquadramento)' : ''); return; }
       if (c.regime && it.regime && c.regime !== it.regime) { c.regimeAnt = c.regime; c.regimeMudou = hoje; mud.push(c.fornecedor + ': ' + c.regime + ' → ' + it.regime); }
       c.regime = it.regime; c.situacaoCad = it.situacaoCad; c.razao = it.razao; c.regimeObs = it.regimeObs; c.regimeEm = hoje;
     });
@@ -707,10 +707,10 @@ var CORE = (function () {
       case 'salvarRegime': { var md = aplicarRegime(db, p.itens || [], hoje); dirty.CONTRATOS = 1; if (md.length) log('enquadramento', md.join(' | ')); r.mudancas = md; r.msg = (p.itens || []).filter(function (x) { return !x.erro; }).length + ' enquadramento(s) atualizado(s)' + (md.length ? ' · ' + md.length + ' alteração(ões)' : ''); break; }
       case 'consultarRegime': {
         if (!ctx.buscarCNPJ) throw new Error('Consulta indisponível neste modo');
-        var alvo = db.contratos.filter(function (x) { return x.ativo !== 'N' && dig(x.doc).length === 14 && (!p.ids || p.ids.indexOf(x.id) >= 0); }).sort(function (a, b) { return String(a.regimeEm || '') < String(b.regimeEm || '') ? -1 : 1; }), feito = {}, its = [], t0 = Date.now(), resta = 0;
-        alvo.forEach(function (x) { var d = dig(x.doc); if (feito[d] === undefined) { if (Date.now() - t0 > 240000) { resta++; return; } try { feito[d] = interpretarCNPJ(ctx.buscarCNPJ(d)); } catch (e) { var em = String(e.message || e); feito[d] = { erro: /UrlFetch|permiss|authoriz/i.test(em) ? 'falta autorizar a consulta (Apps Script › executar autorizarConsultas)' : em }; } } if (feito[d]) its.push(Object.assign({ id: x.id }, feito[d])); });
+        var alvo = db.contratos.filter(function (x) { return x.ativo !== 'N' && dig(x.doc).length === 14 && (!p.ids || p.ids.indexOf(x.id) >= 0); }).sort(function (a, b) { return String(a.regimeEm || '') < String(b.regimeEm || '') ? -1 : 1; }), feito = {}, its = [], t0 = Date.now(), resta = 0, okN = 0, errN = 0, err1 = '', bloq = '';
+        alvo.forEach(function (x) { var d = dig(x.doc); if (feito[d] === undefined) { if (Date.now() - t0 > 240000) { resta++; return; } if (bloq) { resta++; return; } try { feito[d] = interpretarCNPJ(ctx.buscarCNPJ(d)); okN++; } catch (e) { var em = String(e.message || e); errN++; if (!err1) err1 = em.slice(0, 160); if (/UrlFetch|permiss|authoriz|script\.external_request/i.test(em)) { bloq = em.slice(0, 160); feito[d] = { erro: 'falta autorizar a consulta (Apps Script › executar autorizarConsultas) · ' + em.slice(0, 100) }; } else feito[d] = { erro: em.slice(0, 120) }; } } if (feito[d]) its.push(Object.assign({ id: x.id }, feito[d])); });
         var md2 = aplicarRegime(db, its, hoje); dirty.CONTRATOS = 1; if (md2.length) log('enquadramento', md2.join(' | '));
-        r.mudancas = md2; r.msg = Object.keys(feito).length + ' CNPJ(s) consultado(s)' + (resta ? ' · ' + resta + ' ficam para a próxima' : '') + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
+        r.mudancas = md2; r.msg = (bloq ? 'Google sem permissão para consultar a Receita: ' + bloq + ' — ' : '') + okN + ' CNPJ(s) consultado(s) com sucesso' + (errN ? ' · ' + errN + ' com erro (' + err1 + ')' : '') + (resta ? ' · ' + resta + ' ficam para a próxima' : '') + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
       case 'restaurarExcluido': { var exR2 = excluidosDe(db).filter(function (k) { return k !== p.chave; }); gravarExcluidos(db, exR2); dirty.CONFIG = 1; r.msg = 'Linha liberada: o contrato volta a ser cadastrado a partir da planilha'; break; }
       case 'salvarConfig': { var exS = excluidosDe(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
@@ -724,7 +724,18 @@ var CORE = (function () {
       case 'cobrar': { var m = montarCobranca(db, p.id, hoje, cfg); var e = ctx.enviarEmail(m); r.emails = [m]; log('cobrar', p.id + ' → ' + m.para); r.msg = ctx.envia && e ? 'Cobrança enviada para ' + m.para : 'Cobrança preparada para ' + m.para; break; }
       case 'sincronizarCNPJ': { // planilha original → contratos: CNPJ, nome alterado e contratos novos
         var cmA = idx(db), nL0 = db.lancamentos.length; // lançamentos em aberto de contratos inativos/excluídos saem da competência
-        db.lancamentos = db.lancamentos.filter(function (l) { var c = cmA[l.contrato]; return (c && c.ativo !== 'N') || l.arquivo || l.lancado === 'S' || l.conciliado === 'H'; });
+        var lPorId = {}; db.lancamentos.forEach(function (l) { lPorId[l.id] = l; });
+        db.lancamentos.forEach(function (l) { // PDF/lançamento preso a contrato excluído ou inativo passa para o contrato ativo equivalente (mesmo CNPJ e CC)
+          var c = cmA[l.contrato]; if ((c && c.ativo !== 'N') || l.conciliado === 'H' || !(l.arquivo || l.lancado === 'S')) return;
+          var dc = c ? normDoc(c.doc) : '', ccc = c ? canonCC(c.cc) : '';
+          if (!c && l.arquivo) { var pa = parseArquivo(l.arquivo, '', listaCC(db)); dc = normDoc(pa.doc); ccc = canonCC(pa.ccArq || pa.cc || ''); }
+          if (!dc) return;
+          var alvoC = db.contratos.filter(function (x) { return x.ativo !== 'N' && normDoc(x.doc) === dc && (!ccc || canonCC(x.cc) === ccc); }).map(function (x) { return lPorId[lancId(x.id, l.comp)]; }).filter(function (y) { return y && !y.arquivo && y.lancado !== 'S'; })[0];
+          if (!alvoC) return;
+          ['arquivo', 'arqUrl', 'arqData', 'nf', 'valor', 'lancado', 'dtLanc', 'conciliado'].forEach(function (f) { if (l[f] !== '' && l[f] != null) alvoC[f] = l[f]; });
+          l.arquivo = ''; l.lancado = ''; l.conciliado = ''; l.contrato = '#mov';
+        });
+        db.lancamentos = db.lancamentos.filter(function (l) { var c = cmA[l.contrato]; return l.contrato !== '#mov' && ((c && c.ativo !== 'N') || l.arquivo || l.lancado === 'S' || l.conciliado === 'H'); });
         if (db.lancamentos.length !== nL0) dirty.LANCAMENTOS = 1;
         var mg0 = migrar(p.tabs, hoje), shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
         var cpt = function (x) { return norm(x.fornecedor).replace(/[^A-Z0-9]/g, ''); };
@@ -796,7 +807,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.15', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.15c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -839,7 +850,7 @@ let tT; function toast(m, err) { const t = $('#toast'); t.textContent = m; t.cla
 
 /* ---------- helpers ---------- */
 const CI = () => C.idx(DB);
-const lancsComp = c => DB.lancamentos.filter(l => l.comp === c);
+const lancsComp = c => { const ci = CI(); return DB.lancamentos.filter(l => l.comp === c && (ci[l.contrato] && ci[l.contrato].ativo !== 'N' || l.comp < HOJE.slice(0, 7) && (l.arquivo || l.lancado === 'S'))); }; // mês atual: só contratos ativos; meses passados mantêm o histórico
 const pill = (s, extra = '') => `<span class="pill p-${s.k}" ${extra}>${esc(s.t)}</span>`;
 const diaBR = s => s ? s.slice(8) + '/' + s.slice(5, 7) : '';
 const uniq = a => [...new Set(a.filter(Boolean))].sort((x, y) => x.localeCompare(y, 'pt'));
@@ -952,8 +963,8 @@ function vContratos() {
     if (FC.q && C.norm([c.fornecedor, c.doc, c.cc, c.servico, c.ident, c.id].join(' ')).indexOf(C.norm(FC.q)) < 0) return false; return true;
   }).sort((a, b) => (b.v.n - a.v.n) || ((a.v.d == null ? 1e9 : a.v.d) - (b.v.d == null ? 1e9 : b.v.d)) || a.c.fornecedor.localeCompare(b.c.fornecedor));
   const semDoc = DB.contratos.filter(c => c.ativo !== 'N' && !C.dig(c.doc)).length;
-  const semAut = DB.contratos.filter(c => /autorizar|UrlFetch|permiss/i.test(c.regimeObs || '')).length;
-  return `${semAut ? `<div class="warnbox">${semAut} contrato(s) com enquadramento não consultado por falta de autorização do Google. Clique em <b>↻ Consultar enquadramento</b> (a consulta é feita pelo navegador) e, para a checagem automática de segunda-feira, execute uma vez a função <code>autorizarConsultas</code> no Apps Script.</div>` : ''}${semDoc ? `<div class="warnbox">${semDoc} contrato(s) ativo(s) sem CNPJ/CPF. Informe na coluna CNPJ/CPF para a conciliação automática com a pasta — ou vincule um PDF manualmente uma vez na Conciliação e o sistema aprende o CNPJ.</div>` : ''}
+  const semAutL = DB.contratos.filter(c => c.ativo !== 'N' && /autorizar|UrlFetch|permiss/i.test(c.regimeObs || '')), semAut = semAutL.length, semAutTxt = semAut ? semAutL[0].regimeObs : '';
+  return `${semAut ? `<div class="warnbox">${semAut} contrato(s) com a última consulta de enquadramento sem sucesso. <button class="btn sm" data-act="regTodos">↻ Consultar agora</button> — o aviso some quando a consulta der certo.<div class="sub" style="margin-top:4px">Último erro registrado: ${esc(semAutTxt)}</div></div>` : ''}${semDoc ? `<div class="warnbox">${semDoc} contrato(s) ativo(s) sem CNPJ/CPF. Informe na coluna CNPJ/CPF para a conciliação automática com a pasta — ou vincule um PDF manualmente uma vez na Conciliação e o sistema aprende o CNPJ.</div>` : ''}
   <section class="card"><div class="flt">
    <input type="search" id="cq" placeholder="Buscar fornecedor, CNPJ, UC…" value="${esc(FC.q)}">
    <select id="ccc"><option value="">Centro de custo</option>${uniq(DB.contratos.map(c => c.cc)).map(v => opt(v, FC.cc)).join('')}</select>
@@ -988,14 +999,15 @@ async function buscarCNPJWeb(d) {
 async function consultarRegimes(ids) {
   const alvo = DB.contratos.filter(c => c.ativo !== 'N' && C.dig(c.doc).length === 14 && (!ids || ids.includes(c.id)));
   if (!alvo.length) return toast('Nenhum contrato com CNPJ para consultar', 1);
-  const cache = {}, itens = []; let i = 0;
+  const cache = {}, itens = []; let i = 0, ok = 0, err1 = '';
   for (const c of alvo) {
     const d = C.dig(c.doc); i++; toast(`Consultando ${i}/${alvo.length}: ${c.fornecedor}`);
-    if (!cache[d]) { try { cache[d] = C.interpretarCNPJ(await buscarCNPJWeb(d)); } catch (e) { cache[d] = { erro: e.message }; } await new Promise(s => setTimeout(s, 400)); }
+    if (!cache[d]) { try { cache[d] = C.interpretarCNPJ(await buscarCNPJWeb(d)); ok++; } catch (e) { cache[d] = { erro: 'navegador: ' + e.message }; err1 = err1 || e.message; } await new Promise(s => setTimeout(s, 400)); }
     itens.push({ id: c.id, ...cache[d] });
+    if (i === 3 && !ok && modo() !== 'local') break; // rede do navegador bloqueada: passa para o Google
   }
-  if (itens.length && itens.every(x => x.erro) && modo() !== 'local') { toast('Navegador sem acesso à Receita; tentando pelo Google…'); const r2 = await act('consultarRegime', { ids }); return r2; }
-  const r = await act('salvarRegime', { itens }); if (r && r.mudancas && r.mudancas.length) modal('Enquadramento alterado', '<ul class="steps">' + r.mudancas.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>'); return r;
+  if (!ok && modo() !== 'local') { toast('O navegador não alcançou a Receita (' + err1 + '); consultando pelo Google…'); const r2 = await act('consultarRegime', { ids }, { noRender: false }); if (r2) modal('Consulta de enquadramento', `<p>${esc(r2.msg || '')}</p><p class="hint">Pelo navegador: ${esc(err1)}</p>`); return r2; }
+  const r = await act('salvarRegime', { itens }); modal('Consulta de enquadramento', `<p>${ok} CNPJ(s) consultado(s) pelo navegador${err1 ? ' · erros: ' + esc(err1) : ''}.</p>${r && r.mudancas && r.mudancas.length ? '<p><b>Enquadramento alterado:</b></p><ul class="steps">' + r.mudancas.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>' : ''}`); return r;
 }
 function formContrato(c) {
   c = c || { id: '', fornecedor: '', canal: 'email', doc: '', ident: '', cc: '', servico: '', forma: 'BOLETO', vigencia: '', resp: '', diaProg: '', diaVenc: '', valorRef: '', ativo: 'S', obs: '' };
