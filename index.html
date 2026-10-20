@@ -509,7 +509,7 @@ var CORE = (function () {
         var pv = Object.keys(diffC).map(function (cid) { var hv0 = hist[cid] || [], m0 = media(hv0) || numBR((idx(db)[cid] || {}).valorRef); return { cid: cid, d: m0 == null ? Infinity : Math.abs(m0 - p.valor) / Math.max(m0, 1) }; }).sort(function (x, y) { return x.d - y.d; });
         if (pv[0].d < 0.25 && (pv.length < 2 || pv[1].d > Math.max(pv[0].d * 2, 0.1))) { ls = ls.filter(function (x) { return x.l.contrato === pv[0].cid; }); diffC = {}; diffC[pv[0].cid] = 1; out.score += 10; out.motivo.push('valor ≈ histórico'); }
       }
-      if (Object.keys(diffC).length > 1) { out.situacao = 'ambiguo'; out.lancId = ls[0].l.id; tomados[ls[0].l.id] = 1; out.motivo.push(Object.keys(diffC).length + ' contratos possíveis'); res.push(out); return; }
+      if (Object.keys(diffC).length > 1) { out.situacao = 'ambiguo'; out.lancId = ls[0].l.id; tomados[ls[0].l.id] = 1; out._grp = normDoc(p.doc) + '|' + canonCC(ccF || '') + '|' + ls[0].l.comp; out._ls = ls.filter(function (x) { return x.l.comp === ls[0].l.comp; }).map(function (x) { return x.l; }); out.motivo.push(Object.keys(diffC).length + ' contratos possíveis'); res.push(out); return; }
       out.lancId = ls[0].l.id; tomados[out.lancId] = 1; out.score += ls[0].d <= 20 ? 20 : 10; out.motivo.push('competência ' + fmtComp(ls[0].l.comp));
       var hv = hist[ls[0].l.contrato] || [], mv = media(hv);
       if (p.valor != null && mv != null && hv.length >= 2 && Math.abs(p.valor - mv) / mv * 100 > cfg.varPct) out.motivo.push('⚠ valor ' + (p.valor > mv ? '+' : '') + Math.round((p.valor - mv) / mv * 100) + '% vs média');
@@ -517,6 +517,19 @@ var CORE = (function () {
       res.push(out);
     }
     arquivos.forEach(proc); rodada = 2; adiados.forEach(proc);
+    // N PDFs ambíguos do mesmo fornecedor/CC/mês para N contratos em aberto: todos foram lançados → pareia (valor maior com histórico maior)
+    var gA = {}; res.forEach(function (x) { if (x.situacao === 'ambiguo' && x._grp) (gA[x._grp] = gA[x._grp] || []).push(x); });
+    Object.keys(gA).forEach(function (k) {
+      var outs = gA[k], lsU = {}; outs.forEach(function (x) { x._ls.forEach(function (l) { lsU[l.id] = l; }); });
+      outs.forEach(function (x) { delete tomados[x.lancId]; });
+      var abertos = Object.keys(lsU).map(function (id) { return lsU[id]; }).filter(function (l) { return !tomados[l.id] && !l.arquivo; });
+      if (abertos.length !== outs.length) { outs.forEach(function (x) { tomados[x.lancId] = 1; }); return; }
+      var mH = function (l) { var c = idx(db)[l.contrato] || {}, m = media(hist[l.contrato] || []); return m != null ? m : (numBR(c.valorRef) || 0); };
+      outs.sort(function (a, b) { return (b.p.valor || 0) - (a.p.valor || 0); }); abertos.sort(function (a, b) { return mH(b) - mH(a) || (a.contrato < b.contrato ? -1 : 1); });
+      var semHist = abertos.every(function (l) { return !(hist[l.contrato] || []).length; });
+      outs.forEach(function (x, i) { var l = abertos[i]; x.lancId = l.id; x.opcoes = abertos.map(function (y) { return y.id; }); tomados[l.id] = 1; x.situacao = 'auto'; x.motivo = x.motivo.filter(function (m) { return !/contratos possíveis/.test(m); }).concat(['pareado: ' + outs.length + ' PDFs para ' + outs.length + ' contratos do mesmo fornecedor e CC' + (semHist ? ' (confira se o valor ficou no contrato certo)' : '')]); });
+    });
+    res.forEach(function (x) { delete x._grp; delete x._ls; });
     // um PDF que cobre vários contratos equivalentes (ex.: fatura única de vários veículos no mesmo CC)
     var cm3 = idx(db), extras = [];
     res.forEach(function (x) {
@@ -545,7 +558,7 @@ var CORE = (function () {
     var l = db.lancamentos.filter(function (x) { return x.id === lid; })[0]; if (!l) return false;
     var c = idx(db)[l.contrato];
     l.arquivo = a.nome; l.arqUrl = a.url || ''; l.arqData = p.data || '';
-    if (!l.nf && p.nf) l.nf = p.nf; if ((l.valor === '' || l.valor == null) && p.valor != null) l.valor = p.valor;
+    if (p.nf && (!l.nf || l.conciliado !== 'M')) l.nf = p.nf; if (p.valor != null) l.valor = p.valor; // valor e NF vêm do PDF vinculado
     if (l.lancado !== 'S') { l.lancado = 'S'; l.dtLanc = p.data || hoje; }
     l.conciliado = 'S';
     l.atualizado = hoje;
@@ -677,13 +690,15 @@ var CORE = (function () {
         var arqs = p.arquivos && p.arquivos.length ? p.arquivos : (ctx.listarPasta ? ctx.listarPasta(cfg) : []);
         // refaz os vínculos automáticos dos PDFs lidos agora (corrige vínculos feitos por versões anteriores); vínculos manuais (M) ficam
         var lidosN = {}, antes = {}; arqs.forEach(function (a) { lidosN[norm(a.nome)] = 1; });
-        db.lancamentos.forEach(function (l) { if (l.arquivo && l.conciliado === 'S' && lidosN[norm(l.arquivo)]) { antes[l.id] = { arquivo: l.arquivo, arqUrl: l.arqUrl, arqData: l.arqData, lancado: l.lancado, dtLanc: l.dtLanc }; l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; } });
-        var rep = repararVinculos(db); if (rep) dirty.LANCAMENTOS = 1;
+        db.lancamentos.forEach(function (l) { if (l.arquivo && l.conciliado === 'S' && lidosN[norm(l.arquivo)]) { antes[l.id] = { arquivo: l.arquivo, arqUrl: l.arqUrl, arqData: l.arqData, lancado: l.lancado, dtLanc: l.dtLanc, nf: l.nf, valor: l.valor }; l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; l.nf = ''; l.valor = ''; } });
+        var rep = repararVinculos(db), ccsV = listaCC(db);
+        db.lancamentos.forEach(function (l) { if (!l.arquivo || l.conciliado !== 'S') return; var pv = parseArquivo(l.arquivo, '', ccsV); if (pv.valor != null && numBR(l.valor) !== pv.valor) { l.valor = pv.valor; if (pv.nf) l.nf = pv.nf; rep++; } }); // valor gravado diferente do PDF ligado
+        if (rep) dirty.LANCAMENTOS = 1;
         var res = conciliar(db, arqs, hoje, cfg), apl = 0;
         if (p.aplicarAuto) res.forEach(function (x) { if (x.situacao === 'auto' && aplicarVinculo(db, x.lancId, x.arq, x.p, hoje, true)) { x.aplicado = true; apl++; } });
         var usados = {}; db.lancamentos.forEach(function (l) { if (l.arquivo) usados[norm(l.arquivo)] = 1; });
         var mud = 0; db.lancamentos.forEach(function (l) { var a0 = antes[l.id]; if (!a0) return;
-          if (!l.arquivo && !usados[norm(a0.arquivo)]) { l.arquivo = a0.arquivo; l.arqUrl = a0.arqUrl; l.arqData = a0.arqData; l.lancado = a0.lancado; l.dtLanc = a0.dtLanc; l.conciliado = 'S'; usados[norm(a0.arquivo)] = 1; } // vínculo antigo continua valendo (ex.: confirmado à mão)
+          if (!l.arquivo && !usados[norm(a0.arquivo)]) { l.arquivo = a0.arquivo; l.arqUrl = a0.arqUrl; l.arqData = a0.arqData; l.lancado = a0.lancado; l.dtLanc = a0.dtLanc; l.nf = a0.nf; l.valor = a0.valor; l.conciliado = 'S'; usados[norm(a0.arquivo)] = 1; } // vínculo antigo continua valendo (ex.: confirmado à mão)
           if (l.arquivo !== a0.arquivo) mud++; });
         if (apl || mud) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; }
         log('conciliar', arqs.length + ' PDF(s) lidos · ' + apl + ' vínculo(s) automáticos');
@@ -821,7 +836,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.16', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.20', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
