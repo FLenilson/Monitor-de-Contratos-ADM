@@ -358,6 +358,21 @@ var CORE = (function () {
   function pad3(n) { return ('00' + n).slice(-3); }
 
   /* ---- Leitura do nome do arquivo na pasta de documentos lançados ---- */
+  function cnpjValido(d) { d = dig(d); if (d.length === 11) { if (/^(\d)\1+$/.test(d)) return false; var s1 = 0, s2 = 0; for (var i = 0; i < 9; i++) { s1 += +d[i] * (10 - i); s2 += +d[i] * (11 - i); } var d1 = (s1 * 10) % 11 % 10; s2 += d1 * 2; var d2 = (s2 * 10) % 11 % 10; return d1 === +d[9] && d2 === +d[10]; }
+    if (d.length !== 14 || /^(\d)\1+$/.test(d)) return false; var calc = function (n) { var w = n === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2], s = 0; for (var i = 0; i < n; i++) s += +d[i] * w[i]; var r = s % 11; return r < 2 ? 0 : 11 - r; }; return calc(12) === +d[12] && calc(13) === +d[13]; }
+  function docOk(c) { var d = normDoc(c.doc); return d && cnpjValido(d) ? d : ''; } // CNPJ/CPF do contrato só vale para cruzar se os dígitos verificadores batem
+  function conferirPDF(l, c, ccs) { // confere o PDF ligado com o contrato e o lançamento
+    if (!l || !l.arquivo || !c) return []; var p = parseArquivo(l.arquivo, '', ccs || []), out = [];
+    if (p.padrao !== 'SOLUS') return out;
+    var dP = normDoc(p.doc), dC = normDoc(c.doc);
+    if (dP && dC && dP !== dC) out.push(dP.slice(0, 8) === dC.slice(0, 8) ? 'CNPJ do PDF é de outra filial (' + fmtDoc(dP) + ')' : 'CNPJ do PDF (' + fmtDoc(dP) + ') diferente do contrato (' + fmtDoc(dC) + ')');
+    if (dC && !cnpjValido(dC)) out.push('CNPJ do contrato inválido (' + fmtDoc(dC) + ')' + (dP ? ' — no PDF: ' + fmtDoc(dP) : ''));
+    if (p.fornecedor && !notaNome(c, norm(p.fornecedor).replace(/ /g, '')).ok && !(dP && dP === dC)) out.push('nome no PDF: ' + p.fornecedor);
+    if (p.ccArq && canonCC(p.ccArq) !== canonCC(c.cc)) out.push('centro de custo no PDF: ' + p.ccArq + ' (contrato: ' + c.cc + ')');
+    if (p.valor != null && numBR(l.valor) != null && Math.abs(numBR(l.valor) - p.valor) > 0.009) out.push('valor no lançamento ' + moeda(numBR(l.valor)) + ' ≠ líquido do PDF ' + moeda(p.valor));
+    if (p.nf && l.nf && String(+dig(l.nf)) !== String(+dig(p.nf))) out.push('NF no lançamento ' + l.nf + ' ≠ PDF ' + p.nf);
+    return out;
+  }
   function normDoc(d) { d = dig(d); return d.length === 14 && /^000/.test(d) ? d.slice(3) : d; }
   function canonCC(x) { var n = norm(x).replace(/ /g, '').replace(/UNIMED$/, ''); var n2 = n.replace(/^(GESTAO|NUCLEO|SETOR|DEPARTAMENTO|AREA)(DE|DA|DO|DOS|DAS)?/, ''); if (n2.length >= 4 && n2 !== n) n = n2; if (/^ADMINISTRA(CAO|AO|O)?(MATRIZ|TI|FILIAIS)?$/.test(n) || n === 'MATRIZ') return 'ADMINISTRACAO'; if (/^ADMINISTRA(CAO|AO|O)?RP$/.test(n)) return 'ADMINISTRACAORP'; return n; }
   function equivContrato(c) { return dig(normDoc(c.doc)).slice(0, 8) + '|' + canonCC(c.cc) + '|' + norm(c.servico) + '|' + (+c.diaVenc || 0); }
@@ -441,7 +456,7 @@ var CORE = (function () {
     var tomados = {}, rejeit = {}; listaCfg(db, 'rejeitados').forEach(function (k) { rejeit[k] = 1; });
     var ccs = listaCC(db), hist = historicoValores(db), jaVinc = {}, res = [];
     db.lancamentos.forEach(function (l) { if (l.arquivo) jaVinc[norm(l.arquivo)] = l.id; });
-    var porDoc = {}; db.contratos.forEach(function (c) { var d = normDoc(c.doc); if (d) (porDoc[d] = porDoc[d] || []).push(c); });
+    var porDoc = {}; db.contratos.forEach(function (c) { var d = docOk(c); if (d) (porDoc[d] = porDoc[d] || []).push(c); });
     var adiados = [], rodada = 1;
     function proc(a) {
       if (!/\.pdf$/i.test(a.nome || '') || /^RELAT[OÓ]RIO/i.test(semAcento(a.nome)) || /RELAT[OÓ]RIO DI[AÁ]RIO/i.test(a.caminho || '')) return;
@@ -453,7 +468,7 @@ var CORE = (function () {
         var baseF = function (c) { return norm(String(c.fornecedor || '').split(/ - |\(/)[0]).replace(/ /g, ''); }, bases = {};
         cands.forEach(function (c) { bases[baseF(c)] = 1; });
         var nfX = norm(p.fornecedor || '').replace(/ /g, '');
-        db.contratos.forEach(function (c) { if (c.ativo !== 'N' && !dig(c.doc) && cands.indexOf(c) < 0 && (bases[baseF(c)] || nfX && notaNome(c, nfX).ok)) cands.push(c); });
+        db.contratos.forEach(function (c) { if (c.ativo !== 'N' && !docOk(c) && cands.indexOf(c) < 0 && (bases[baseF(c)] || nfX && notaNome(c, nfX).ok)) cands.push(c); });
       }
       if (!cands.length) {
         // sem CNPJ cadastrado: tenta identificador (UC/linha) contido no nome
@@ -464,7 +479,7 @@ var CORE = (function () {
       if (!cands.length && dig(p.doc).length === 14) { var rz = dig(p.doc).slice(0, 8); cands = db.contratos.filter(function (c) { return c.ativo !== 'N' && dig(c.doc).length === 14 && dig(c.doc).slice(0, 8) === rz; }); if (cands.length) { out.score += 40; out.motivo.push('CNPJ raiz (filial)'); } }
       if (!cands.length && p.fornecedor) { // contrato ainda sem CNPJ: compara o nome do fornecedor
         var nf0 = norm(p.fornecedor).replace(/ /g, ''), best = 0;
-        var sc0 = db.contratos.filter(function (c) { return c.ativo !== 'N' && !dig(c.doc); }).map(function (c) { return { c: c, n: notaNome(c, nf0) }; }).filter(function (x) { return x.n.ok; });
+        var sc0 = db.contratos.filter(function (c) { return c.ativo !== 'N' && !docOk(c); }).map(function (c) { return { c: c, n: notaNome(c, nf0) }; }).filter(function (x) { return x.n.ok; });
         cands = sc0.map(function (x) { return x.c; });
         if (cands.length) { out.score += 35; out.motivo.push('nome do fornecedor'); }
       }
@@ -562,7 +577,7 @@ var CORE = (function () {
     if (l.lancado !== 'S') { l.lancado = 'S'; l.dtLanc = p.data || hoje; }
     l.conciliado = 'S';
     l.atualizado = hoje;
-    if (aprender && c && !dig(c.doc) && p.doc) c.doc = normDoc(p.doc);
+    if (aprender && c && !docOk(c) && p.doc && cnpjValido(normDoc(p.doc))) c.doc = normDoc(p.doc); // corrige CNPJ em branco ou digitado errado pelo do PDF
     if (c && p.fornecedor) { var ka = chaveAlias(p), al = (c.aliases || '').split('|').filter(Boolean); if (al.indexOf(ka) < 0) { al.unshift(ka); c.aliases = al.slice(0, 6).join('|'); } }
     return true;
   }
@@ -842,7 +857,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.20c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.20d', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -956,7 +971,7 @@ function calendario(ls) {
 
 /* ---------- LANÇAMENTOS ---------- */
 function vLanc() {
-  const ci = CI(), ls = lancsComp(COMP);
+  const ci = CI(), ls = lancsComp(COMP), CCS = C.listaCC(DB);
   if (!ls.length) return `<div class="card"><div class="bd row"><b>Competência ${C.fmtComp(COMP)} ainda não foi gerada.</b><button class="btn pri" data-act="gerar">Gerar ${C.fmtComp(COMP)}</button></div></div>`;
   const rows = ls.map(l => ({ l, c: ci[l.contrato] || {}, s: C.statusLanc(l, HOJE, CFG) })).filter(({ l, c, s }) => {
     if (F.resp && c.resp !== F.resp) return false; if (F.cc && c.cc !== F.cc) return false;
@@ -984,7 +999,7 @@ function vLanc() {
    <td><label class="tgl"><input type="checkbox" class="tg" data-f="lancado" ${l.lancado === 'S' ? 'checked' : ''} aria-label="Lançado">${l.dtLanc ? diaBR(l.dtLanc) : ''}</label></td>
    <td><input class="in sm w-nf" data-f="nf" value="${esc(l.nf)}" aria-label="NF"></td>
    <td><input class="in sm w-v" data-f="valor" value="${l.valor === '' || l.valor == null ? '' : esc(String(l.valor).replace('.', ','))}" inputmode="decimal" aria-label="Valor"></td>
-   <td>${l.arquivo ? `${l.arqUrl ? `<a href="${/^https?:/i.test(l.arqUrl) ? esc(l.arqUrl) : '#'}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
+   <td>${(() => { const dv = C.conferirPDF(l, ci[l.contrato], CCS); return dv.length ? `<span class="chip" style="background:var(--warn-s);color:var(--warn)" title="${esc(dv.join('\n'))}">⚠ ${dv.length}</span> ` : ''; })()}${l.arquivo ? `${l.arqUrl ? `<a href="${/^https?:/i.test(l.arqUrl) ? esc(l.arqUrl) : '#'}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
    <td>${s.k !== 'conc' && s.k !== 'hist' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
   </tbody></table></div></section>`;
 }
@@ -1010,7 +1025,7 @@ function vContratos() {
    <button class="btn pri" data-act="novoC">+ Novo contrato</button>
   </div><div class="scroll"><table class="t"><thead><tr><th>ID</th><th>Fornecedor</th><th>CNPJ / CPF</th><th>Enquadramento</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Vigência</th><th>Situação</th><th>Ativo</th><th></th></tr></thead><tbody>
   ${cs.map(({ c, v }) => `<tr data-cid="${c.id}"><td class="num hint">${c.id}</td><td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
-  <td><input class="in sm w-doc ${C.dig(c.doc) ? '' : 'miss'}" data-cf="doc" value="${esc(C.fmtDoc(c.doc))}" placeholder="00.000.000/0000-00" aria-label="CNPJ ou CPF"></td>
+  <td><input class="in sm w-doc ${C.dig(c.doc) && C.cnpjValido(c.doc) ? '' : 'miss'}" data-cf="doc" value="${esc(C.fmtDoc(c.doc))}" placeholder="00.000.000/0000-00" aria-label="CNPJ ou CPF" title="${C.dig(c.doc) && !C.cnpjValido(c.doc) ? 'CNPJ/CPF inválido (dígito verificador não confere)' : ''}">${C.dig(c.doc) && !C.cnpjValido(c.doc) ? '<div class="sub" style="color:var(--crit)">inválido</div>' : ''}</td>
   <td>${celRegime(c)}</td>
   <td>${esc(c.cc)}<div class="sub">${esc(c.servico)}</div></td><td>${esc(c.resp)}</td><td class="num">DIA ${C.pad(+c.diaProg || 0)}</td><td class="num">DIA ${C.pad(+c.diaVenc || 0)}</td>
   <td class="num">${c.vigencia >= '2900' ? '<span class="hint">indeterm.</span>' : C.fmtBR(c.vigencia)}${v.d != null ? `<div class="sub">${v.d >= 0 ? v.d + ' dias' : ''}</div>` : ''}</td><td>${pill(v)}</td>
