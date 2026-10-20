@@ -161,7 +161,7 @@ code{font:12px var(--f-m);background:var(--panel2);border:1px solid var(--line);
 /* ===== NÚCLEO COMPARTILHADO (navegador + Google Apps Script) ===== */
 var CORE = (function () {
   var CAMPOS = {
-    CONTRATOS: ['id', 'fornecedor', 'canal', 'doc', 'ident', 'cc', 'servico', 'forma', 'vigencia', 'resp', 'diaProg', 'diaVenc', 'valorRef', 'ativo', 'obs', 'razao', 'regime', 'situacaoCad', 'regimeObs', 'regimeEm', 'regimeAnt', 'regimeMudou', 'aliases'],
+    CONTRATOS: ['id', 'fornecedor', 'canal', 'doc', 'ident', 'cc', 'servico', 'forma', 'vigencia', 'resp', 'diaProg', 'diaVenc', 'valorRef', 'ativo', 'obs', 'razao', 'regime', 'situacaoCad', 'regimeObs', 'regimeEm', 'regimeAnt', 'regimeMudou', 'aliases', 'chavePlanilha'],
     LANCAMENTOS: ['id', 'contrato', 'comp', 'dtProg', 'dtVenc', 'lancado', 'dtLanc', 'pago', 'dtPag', 'nf', 'valor', 'arquivo', 'arqUrl', 'arqData', 'conciliado', 'obs', 'atualizado'],
     RESPONSAVEIS: ['nome', 'email'],
     CONFIG: ['chave', 'valor'],
@@ -375,7 +375,7 @@ var CORE = (function () {
       r.padrao = 'SOLUS'; r.tipo = pt[0]; r.ccArq = pt[1]; r.nf = pt[2].replace(/^0+(?=\d)/, ''); r.fornecedor = pt.slice(3, ic).join(' '); r.doc = pt[ic];
       var resto = pt.slice(ic + 1), nums = [];
       resto.forEach(function (x) { if (!r.venc && /^\d{8}$/.test(x)) { var dd = +x.slice(0, 2), mm2 = +x.slice(2, 4), yy = +x.slice(4); if (dd >= 1 && dd <= 31 && mm2 >= 1 && mm2 <= 12 && yy > 2000) { r.venc = iso(yy, mm2, dd); return; } } if (/^\d+$/.test(x)) nums.push(+x / 100); else if (/[A-Za-z]/.test(x) && !r.forma) r.forma = x; });
-      if (nums.length) r.valor = nums[0]; if (nums.length > 1) r.liquido = nums[1];
+      if (nums.length) r.bruto = nums[0]; if (nums.length > 1) r.liquido = nums[nums.length - 1]; r.valor = r.liquido != null ? r.liquido : r.bruto; // valor do controle = líquido do PDF
       var nc0 = norm(r.ccArq).replace(/ /g, '');
       r.cc = (ccs || []).filter(function (x) { return norm(x).replace(/ /g, '') === nc0; })[0] || (ccs || []).filter(function (x) { return canonCC(x) === canonCC(r.ccArq); })[0] || (CC_ALIAS[norm(r.ccArq)] ? ((ccs || []).filter(function (x) { return norm(x) === norm(CC_ALIAS[norm(r.ccArq)]); })[0] || CC_ALIAS[norm(r.ccArq)]) : r.ccArq);
       r.data = '';
@@ -450,7 +450,7 @@ var CORE = (function () {
       var cands = p.doc ? (porDoc[normDoc(p.doc)] || []).filter(function (c) { return c.ativo !== 'N'; }) : [];
       if (p.doc && cands.length) { out.score += 50; out.motivo.push('CNPJ/CPF'); }
       if (p.doc && cands.length) { // mesmo fornecedor cadastrado em outras linhas sem CNPJ (ex.: um contrato por veículo/placa)
-        var baseF = function (c) { return norm(String(c.fornecedor || '').split(' - ')[0]).replace(/ /g, ''); }, bases = {};
+        var baseF = function (c) { return norm(String(c.fornecedor || '').split(/ - |\(/)[0]).replace(/ /g, ''); }, bases = {};
         cands.forEach(function (c) { bases[baseF(c)] = 1; });
         var nfX = norm(p.fornecedor || '').replace(/ /g, '');
         db.contratos.forEach(function (c) { if (c.ativo !== 'N' && !dig(c.doc) && cands.indexOf(c) < 0 && (bases[baseF(c)] || nfX && notaNome(c, nfX).ok)) cands.push(c); });
@@ -545,7 +545,7 @@ var CORE = (function () {
   }
   // desfaz vínculos automáticos errados: PDF com vencimento longe do lançamento e outro lançamento do mesmo fornecedor/CC em aberto com vencimento batendo
   function repararVinculos(db) {
-    var cm = idx(db), ccs = listaCC(db), n = 0, baseF = function (c) { return norm(String(c.fornecedor || '').split(' - ')[0]).replace(/ /g, ''); };
+    var cm = idx(db), ccs = listaCC(db), n = 0, baseF = function (c) { return norm(String(c.fornecedor || '').split(/ - |\(/)[0]).replace(/ /g, ''); };
     db.lancamentos.forEach(function (l) {
       if (!l.arquivo || l.conciliado !== 'S') return; var c = cm[l.contrato]; if (!c) return;
       var p = parseArquivo(l.arquivo, '', ccs); if (!p.venc || !l.dtVenc || Math.abs(dias(l.dtVenc, p.venc)) <= 5) return;
@@ -670,7 +670,7 @@ var CORE = (function () {
       }
       case 'excluirContrato': {
         var cx = db.contratos.filter(function (x) { return x.id === p.id; })[0];
-        if (cx) { var exl = excluidosDe(db), kx = chaveSync(cx); if (exl.indexOf(kx) < 0) exl.push(kx); gravarExcluidos(db, exl); dirty.CONFIG = 1; } // não volta na sincronização com a planilha
+        if (cx) { var exl = excluidosDe(db), kx = cx.chavePlanilha || chaveSync(cx); if (exl.indexOf(kx) < 0) exl.push(kx); gravarExcluidos(db, exl); dirty.CONFIG = 1; } // não volta na sincronização com a planilha
         db.contratos = db.contratos.filter(function (x) { return x.id !== p.id; });
         db.lancamentos = db.lancamentos.filter(function (l) { return l.contrato !== p.id || l.lancado === 'S'; });
         dirty.CONTRATOS = dirty.LANCAMENTOS = 1; log('excluirContrato', p.id); r.msg = 'Contrato excluído (lançamentos já realizados foram mantidos)'; break;
@@ -759,6 +759,9 @@ var CORE = (function () {
         });
         db.lancamentos = db.lancamentos.filter(function (l) { var c = cmA[l.contrato]; return l.contrato !== '#mov' && ((c && c.ativo !== 'N') || l.arquivo || l.lancado === 'S' || l.conciliado === 'H'); });
         if (db.lancamentos.length !== nL0) dirty.LANCAMENTOS = 1;
+        // datas dos lançamentos em aberto seguem sempre os dias atuais do contrato (corrige contrato alterado direto na aba CONTRATOS)
+        var cmD = idx(db), nDt = 0; db.lancamentos.forEach(function (l) { var c = cmD[l.contrato]; if (!c || l.arquivo || l.lancado === 'S' || l.conciliado === 'H' || !diaNum(c.diaProg)) return; var nl = novoLanc(c, l.comp); if (nl.dtProg !== l.dtProg || nl.dtVenc !== l.dtVenc) { l.dtProg = nl.dtProg; l.dtVenc = nl.dtVenc; nDt++; } });
+        if (nDt) { dirty.LANCAMENTOS = 1; log('datasAjustadas', nDt + ' lançamento(s) com programação/vencimento atualizados pelo contrato'); }
         var mg0 = migrar(p.tabs, hoje), shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
         var cpt = function (x) { return norm(x.fornecedor).replace(/[^A-Z0-9]/g, ''); };
         // remove contratos duplicados criados antes (mesmo nome sem pontuação, mesmo CC e vencimento): fica o mais antigo, com os lançamentos
@@ -773,9 +776,10 @@ var CORE = (function () {
         if (dupl.length) { db.contratos = db.contratos.filter(function (x) { return dupl.indexOf(x.id) < 0; }); db.lancamentos = db.lancamentos.filter(function (l) { return l.contrato !== '#del'; }); dirty.LANCAMENTOS = 1; alt += dupl.length; log('duplicadosRemovidos', dupl.join(', ')); }
         var k1 = function (x) { return chave(x.fornecedor, x.cc, x.servico) + '|' + norm(x.ident); }, idxK = {};
         db.contratos.forEach(function (x) { (idxK[k1(x)] = idxK[k1(x)] || []).push(x); });
-        shs.forEach(function (s, i) { var q = (idxK[k1(s)] || []).filter(function (x) { return !usadoDb[x.id]; }); if (q.length) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
-        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && cpt(x) === cpt(s) && canonCC(x.cc) === canonCC(s.cc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (q[0].fornecedor !== s.fornecedor) { q[0].fornecedor = s.fornecedor; alt++; } } });
-        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && canonCC(x.cc) === canonCC(s.cc) && norm(x.servico) === norm(s.servico) && +x.diaProg === +s.diaProg && +x.diaVenc === +s.diaVenc && (!dig(x.doc) || !s.doc || dig(x.doc) === s.doc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); if (norm(q[0].fornecedor) !== norm(s.fornecedor)) { q[0].fornecedor = s.fornecedor; alt++; } } });
+        shs.forEach(function (s, i) { var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && x.chavePlanilha && x.chavePlanilha === k1(s); }); if (q.length) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } }); // vínculo já conhecido com a linha da planilha
+        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = (idxK[k1(s)] || []).filter(function (x) { return !usadoDb[x.id]; }); if (q.length) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
+        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && cpt(x) === cpt(s) && canonCC(x.cc) === canonCC(s.cc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
+        shs.forEach(function (s, i) { if (usadoSh[i]) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && canonCC(x.cc) === canonCC(s.cc) && norm(x.servico) === norm(s.servico) && +x.diaProg === +s.diaProg && +x.diaVenc === +s.diaVenc && (!dig(x.doc) || !s.doc || dig(x.doc) === s.doc); }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
         shs.forEach(function (s, i) { if (usadoSh[i] || !s.doc) return; var q = db.contratos.filter(function (x) { return !usadoDb[x.id] && normDoc(x.doc) === normDoc(s.doc) && canonCC(x.cc) === canonCC(s.cc) && +x.diaVenc === +s.diaVenc; }); if (q.length === 1) { usadoDb[q[0].id] = 1; usadoSh[i] = 1; pares.push([q[0], s]); } });
         // contrato inativado automaticamente volta a valer se a linha continua (ou voltou) na planilha
         var reat = [], reAt = function (c) { c.ativo = 'S'; c.obs = String(c.obs || '').replace(/( · )?inativado: linha removida da planilha em [\d\/]+/g, '').trim(); reat.push(c.id); alt++; };
@@ -792,10 +796,11 @@ var CORE = (function () {
         Object.keys(shK).forEach(function (k) {
           var rows = shK[k].filter(function (i) { return !usadoSh[i]; }), sobra = db.contratos.filter(function (x) { return !usadoDb[x.id] && x.ativo !== 'N' && kF(x) === k; });
           if (!sobra.length || !rows.length) return; // sem linha nova/alterada desse fornecedor: sobras aparecem como "só no painel" (não inativa)
+          var juntou = sobra.length > rows.length; // várias linhas viraram uma: aí o nome da planilha vale; senão é só reencontro e o nome do painel fica
           rows.forEach(function (i) { var s0 = shs[i]; if (!sobra.length) return;
             sobra.sort(function (a, b) { return (canonCC(b.cc) === canonCC(s0.cc)) - (canonCC(a.cc) === canonCC(s0.cc)) || nLig(b) - nLig(a) || (parseInt(dig(a.id), 10) || 0) - (parseInt(dig(b.id), 10) || 0); });
             var c = sobra.shift(); usadoDb[c.id] = 1; usadoSh[i] = 1; pares.push([c, s0]);
-            ['fornecedor', 'cc', 'servico', 'forma', 'diaProg', 'diaVenc', 'resp'].forEach(function (f) { if (s0[f] !== '' && s0[f] != null) c[f] = s0[f]; });
+            (juntou ? ['fornecedor'] : []).concat(['cc', 'servico', 'forma', 'diaProg', 'diaVenc', 'resp']).forEach(function (f) { if (s0[f] !== '' && s0[f] != null) c[f] = s0[f]; });
             db.lancamentos.forEach(function (l) { if (l.contrato === c.id && l.comp >= compH && !l.arquivo && l.lancado !== 'S') { var nl = novoLanc(c, l.comp); l.dtProg = nl.dtProg; l.dtVenc = nl.dtVenc; } });
             consol.push(c.fornecedor + ' (' + c.cc + ')'); alt++; });
           sobra.forEach(function (c) { if (!shK[k].length) return; c.ativo = 'N'; c.obs = ((c.obs ? c.obs + ' · ' : '') + 'inativado: linha removida da planilha em ' + fmtBR(hoje)); usadoDb[c.id] = 1; inat.push(c.fornecedor + ' (' + c.cc + ')'); alt++;
@@ -804,11 +809,12 @@ var CORE = (function () {
         if (consol.length || inat.length) { dirty.LANCAMENTOS = 1; log('consolidarPlanilha', 'mantidos: ' + consol.join('; ') + ' | inativados: ' + inat.join('; ')); }
         var excl = excluidosDe(db); shs.forEach(function (s, i) { if (!usadoSh[i] && excl.indexOf(k1(s)) >= 0) usadoSh[i] = 1; }); // excluídos no painel não voltam
         var renov = [];
+        pares.forEach(function (pr) { var kp = k1(pr[1]); if (pr[0].chavePlanilha !== kp) { pr[0].chavePlanilha = kp; dirty.CONTRATOS = 1; } });
         pares.forEach(function (pr) { if (pr[1].doc && dig(pr[0].doc) !== pr[1].doc) { pr[0].doc = pr[1].doc; alt++; } if (pr[1].vigencia && pr[1].vigencia > String(pr[0].vigencia || '')) { renov.push(pr[0].fornecedor + ' (' + pr[0].cc + '): ' + fmtBR(pr[0].vigencia) + ' → ' + fmtBR(pr[1].vigencia)); pr[0].vigencia = pr[1].vigencia; alt++; } });
         if (renov.length) log('vigenciaRenovada', renov.join(' | '));
         var mx = 0; db.contratos.forEach(function (x) { mx = Math.max(mx, parseInt(dig(x.id), 10) || 0); });
         var exR = {}; (db.responsaveis || []).forEach(function (x) { exR[norm(x.nome)] = 1; });
-        var criados = {}; shs.forEach(function (s, i) { if (usadoSh[i]) return; criados[i] = 1; s.id = 'C' + pad3(++mx); s.ativo = 'S'; db.contratos.push(s); novos++; nomesN.push(s.fornecedor + ' (' + s.cc + ')'); if (s.resp && !exR[norm(s.resp)]) { exR[norm(s.resp)] = 1; (db.responsaveis = db.responsaveis || []).push({ nome: s.resp, email: '' }); dirty.RESPONSAVEIS = 1; } });
+        var criados = {}; shs.forEach(function (s, i) { if (usadoSh[i]) return; criados[i] = 1; s.id = 'C' + pad3(++mx); s.ativo = 'S'; s.chavePlanilha = k1(s); db.contratos.push(s); novos++; nomesN.push(s.fornecedor + ' (' + s.cc + ')'); if (s.resp && !exR[norm(s.resp)]) { exR[norm(s.resp)] = 1; (db.responsaveis = db.responsaveis || []).push({ nome: s.resp, email: '' }); dirty.RESPONSAVEIS = 1; } });
         if (novos) { gerarCompetencia(db, hoje.slice(0, 7)); dirty.LANCAMENTOS = 1; }
         if (alt || novos) { dirty.CONTRATOS = 1; log('sincronizarPlanilha', alt + ' alteração(ões), ' + novos + ' contrato(s) novo(s): ' + nomesN.join('; ')); }
         var exclF = excluidosDe(db), prs = {}; pares.forEach(function (pr) { prs[shs.indexOf(pr[1])] = pr[0]; });
@@ -836,7 +842,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.20', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.20c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -970,7 +976,7 @@ function vLanc() {
    <span class="hint" style="margin-left:auto">${rows.length} de ${ls.length} · ${C.moeda(tot) || 'R$ 0,00'}</span>
   </div>
   <div class="flt" style="padding-block:6px"><span class="hint">${SEL.size} selecionado(s)</span><button class="btn sm" data-act="lote" data-f="lancado" ${SEL.size ? '' : 'disabled'}>✓ Marcar lançado</button><button class="btn sm" data-act="loteCobrar" ${SEL.size ? '' : 'disabled'}>✉ Cobrar selecionados</button></div>
-  <div class="scroll"><table class="t"><thead><tr><th><input type="checkbox" id="selAll" aria-label="Selecionar todos"></th><th>Situação</th><th>Fornecedor</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Lançado</th><th>NF / doc</th><th>Valor</th><th>PDF</th><th></th></tr></thead><tbody>
+  <div class="scroll"><table class="t"><thead><tr><th><input type="checkbox" id="selAll" aria-label="Selecionar todos"></th><th>Situação</th><th>Fornecedor</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Lançado</th><th>NF / doc</th><th>Valor líquido</th><th>PDF</th><th></th></tr></thead><tbody>
   ${rows.map(({ l, c, s }) => `<tr data-id="${l.id}"><td><input type="checkbox" class="sel" ${SEL.has(l.id) ? 'checked' : ''} aria-label="Selecionar"></td><td>${pill(s)}</td>
    <td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
    <td>${esc(c.cc)}<div class="sub">${esc(c.servico)}</div></td><td>${esc(c.resp)}</td>
@@ -1081,7 +1087,7 @@ function vConc() {
     const lista = CONC.resultado.filter(x => (x.situacao !== 'jaVinculado' || CONC.verJa) && (!['semvinculo', 'outroCC', 'semLancamento'].includes(x.situacao) || CONC.verSem));
     res = `<section class="card"><h3>Resultado · ${CONC.lidos} arquivo(s) lidos <span class="sp chips">${Object.keys(grp).map(k => `<span class="pill p-${k}">${lab[k] || k}: ${grp[k]}</span>`).join('')}</span></h3>
      <div class="flt" style="padding-block:6px"><button class="btn sm pri" data-act="vincTodos">Vincular todos os sugeridos</button><label class="row hint"><input type="checkbox" id="aprender" checked> aprender CNPJ do arquivo quando o contrato não tiver</label>${grp.semvinculo || grp.outroCC || grp.semLancamento ? `<label class="row hint"><input type="checkbox" id="verSem" ${CONC.verSem ? 'checked' : ''}> mostrar notas sem contrato / outro CC / extras no mês (${(grp.semvinculo || 0) + (grp.outroCC || 0) + (grp.semLancamento || 0)})</label>` : ''}${grp.jaVinculado ? `<label class="row hint"><input type="checkbox" id="verJa" ${CONC.verJa ? 'checked' : ''}> mostrar já vinculados</label>` : ''}</div>
-     <div class="scroll"><table class="t"><thead><tr><th>Situação</th><th>Arquivo</th><th>CNPJ/CPF</th><th>NF</th><th>Valor</th><th>C. custo</th><th>Data</th><th>Lançamento</th><th>Motivo</th><th></th></tr></thead><tbody>
+     <div class="scroll"><table class="t"><thead><tr><th>Situação</th><th>Arquivo</th><th>CNPJ/CPF</th><th>NF</th><th>Valor líquido</th><th>C. custo</th><th>Data</th><th>Lançamento</th><th>Motivo</th><th></th></tr></thead><tbody>
      ${lista.map((x, i) => { const ix = CONC.resultado.indexOf(x); return `<tr data-ix="${ix}"><td><span class="pill p-${x.situacao}">${x.aplicado ? 'Vinculado' : lab[x.situacao]}</span>${x.score ? `<div class="sub">score ${x.score}</div>` : ''}</td>
       <td><div class="fn" style="font-weight:500;word-break:break-word">${x.arq.url ? `<a href="${esc(x.arq.url)}" target="_blank" rel="noopener">${esc(x.arq.nome)}</a>` : esc(x.arq.nome)}</div><div class="sub">${esc(x.arq.caminho || '')}</div></td>
       <td class="num">${x.p.doc ? C.fmtDoc(x.p.doc) : '<span class="chip miss">não lido</span>'}</td><td class="num">${esc(x.p.nf)}</td><td class="num">${C.moeda(x.p.valor)}${x.p.liquido != null && x.p.liquido !== x.p.valor ? `<div class="sub">líq. ${C.moeda(x.p.liquido)}</div>` : ''}</td><td>${esc(x.p.cc)}</td><td class="num">${x.p.venc ? 'venc ' + C.fmtBR(x.p.venc) : C.fmtBR(x.p.data) || C.fmtComp(x.p.comp)}${x.p.fornecedor ? `<div class="sub">${esc(x.p.fornecedor)}</div>` : ''}</td>
@@ -1208,7 +1214,7 @@ function porque(id) {
   const quem = lid => { if (!lid) return ''; const [cid, cp] = lid.split('@'); return (ci[cid] ? ci[cid].fornecedor : cid) + ' · ' + C.fmtComp(cp); };
   modal('Por que não achou o PDF?', `<p><b>${esc(c.fornecedor)}</b> · ${esc(c.cc)} · CNPJ ${esc(c.doc || 'em branco')} · venc ${C.fmtBR(l.dtVenc)}</p>
   <p class="hint">${CONC.lidos} arquivo(s) lidos na última leitura · ${its.length} deste fornecedor:</p>
-  ${its.length ? `<div style="max-height:55vh;overflow:auto"><table class="tbl"><thead><tr><th>Arquivo</th><th>Venc.</th><th>Valor</th><th>Resultado</th></tr></thead><tbody>${its.map(x => `<tr><td style="font-size:11px;word-break:break-all">${esc(x.arq.caminho || x.arq.nome)}</td><td>${x.p.venc ? C.fmtBR(x.p.venc) : '—'}</td><td>${x.p.valor != null ? C.moeda(x.p.valor) : '—'}</td><td><b>${lab[x.situacao] || x.situacao}${x.aplicado ? ' ✓' : ''}</b><div class="sub">${esc(quem(x.lancId))}</div><div class="sub">${esc((x.motivo || []).join(' · '))}</div></td></tr>`).join('')}</tbody></table></div>` : '<p><b>Nenhum PDF deste fornecedor foi encontrado na leitura.</b> Confira se a pasta escolhida é a "1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS" (ou a pasta 2026 acima dela).</p>'}
+  ${its.length ? `<div style="max-height:55vh;overflow:auto"><table class="tbl"><thead><tr><th>Arquivo</th><th>Venc.</th><th>Valor líquido</th><th>Resultado</th></tr></thead><tbody>${its.map(x => `<tr><td style="font-size:11px;word-break:break-all">${esc(x.arq.caminho || x.arq.nome)}</td><td>${x.p.venc ? C.fmtBR(x.p.venc) : '—'}</td><td>${x.p.valor != null ? C.moeda(x.p.valor) : '—'}</td><td><b>${lab[x.situacao] || x.situacao}${x.aplicado ? ' ✓' : ''}</b><div class="sub">${esc(quem(x.lancId))}</div><div class="sub">${esc((x.motivo || []).join(' · '))}</div></td></tr>`).join('')}</tbody></table></div>` : '<p><b>Nenhum PDF deste fornecedor foi encontrado na leitura.</b> Confira se a pasta escolhida é a "1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS" (ou a pasta 2026 acima dela).</p>'}
   <p class="hint">Copie esta tela (print) e envie se precisar de ajuda.</p>`);
 }
 async function compararPlanilha() {
