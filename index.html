@@ -457,7 +457,8 @@ var CORE = (function () {
     var ccs = listaCC(db), hist = historicoValores(db), jaVinc = {}, res = [];
     db.lancamentos.forEach(function (l) { if (l.arquivo) jaVinc[norm(l.arquivo)] = l.id; });
     var porDoc = {}; db.contratos.forEach(function (c) { var d = docOk(c); if (d) (porDoc[d] = porDoc[d] || []).push(c); });
-    var adiados = [], rodada = 1;
+    var adiados = [], rodada = 1, ccCertoNaLeitura = {}; // fornecedores com PDF no CC do próprio contrato nesta leitura
+    arquivos.forEach(function (a) { var pp = parseArquivo(a.nome, a.caminho, ccs, a.data), d0 = normDoc(pp.doc); if (!d0 || !porDoc[d0]) return; var cc0 = pp.ccArq || pp.cc; if (cc0 && porDoc[d0].some(function (c) { return c.ativo !== 'N' && canonCC(c.cc) === canonCC(cc0); })) ccCertoNaLeitura[d0] = 1; });
     function proc(a) {
       if (!/\.pdf$/i.test(a.nome || '') || /^RELAT[OÓ]RIO/i.test(semAcento(a.nome)) || /RELAT[OÓ]RIO DI[AÁ]RIO/i.test(a.caminho || '')) return;
       var p = parseArquivo(a.nome, a.caminho, ccs, a.data), out = { arq: a, p: p, lancId: '', score: 0, motivo: [], situacao: 'semvinculo', opcoes: [] };
@@ -488,6 +489,7 @@ var CORE = (function () {
       else if (cands.length && ccF) {
         var f = cands.filter(function (c) { return canonCC(c.cc) === canonCC(ccF); });
         if (f.length) { cands = f; out.score += 15; out.motivo.push('CC'); }
+        else if (cands.length === 1 && p.doc && !ccCertoNaLeitura[normDoc(p.doc)]) { out.motivo.push('único contrato do fornecedor (PDF com CC ' + ccF + ')'); } // fornecedor com uma linha só (ex.: Movida): aceita qualquer CC
         else { out.situacao = 'outroCC'; out.motivo.push('fornecedor de contrato, mas centro de custo ' + ccF + ' sem contrato'); var idsO = {}; cands.forEach(function (c) { idsO[c.id] = 1; }); out.opcoes = db.lancamentos.filter(function (l) { return idsO[l.contrato] && !l.arquivo && l.conciliado !== 'H'; }).map(function (l) { return l.id; }); res.push(out); return; }
       }
       if (cands.length > 1 && p.fornecedor) { var nf1 = norm(p.fornecedor).replace(/ /g, ''), mx = 0, sn = cands.map(function (c) { var n = notaNome(c, nf1); mx = Math.max(mx, n.hit); return { c: c, h: n.hit }; }); var f3 = sn.filter(function (x) { return x.h === mx; }); if (mx && f3.length < sn.length) { cands = f3.map(function (x) { return x.c; }); out.motivo.push('nome'); } }
@@ -857,7 +859,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.20d', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.10.20e', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -948,7 +950,7 @@ function vPainel() {
   const em = {}; DB.responsaveis.forEach(r => em[C.norm(r.nome)] = r.email);
   const ultC = DB.log.filter(l => l.acao === 'conciliar').map(l => String(l.quando)).sort().pop();
   const diasC = ultC ? C.dias(ultC.slice(0, 10), HOJE) : null;
-  const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button>`;
+  const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button> <button class="btn sm" data-act="diag" title="Gera um arquivo com contratos, lançamentos e o resultado da última leitura da pasta para conferência">⬇ Diagnóstico</button>`;
   const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC > 1 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(ultC)}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(ultC)}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
   return gerar + aviso + kp + `<div class="grid2">
    <section class="card"><h3>Fila de ação <span class="hint">${al.length} item(ns) · últimas 3 competências + vigência</span><span class="sp chips">${['', ...tipos].map(t => `<button class="fch" data-fa="${esc(t)}" aria-pressed="${FA === t}">${t || 'Todos'}</button>`).join('')}</span></h3>
@@ -1246,6 +1248,13 @@ async function compararPlanilha() {
   ${ok.map(x => tr(x, 'OK · ' + esc(x.contrato) + (x.nomeContrato && C.norm(x.nomeContrato) !== C.norm(x.fornecedor) ? '<div class="sub">painel: ' + esc(x.nomeContrato) + '</div>' : ''))).join('')}
   </tbody></table></div>`);
 }
+function baixarDiagnostico() {
+  const c0 = C.compSoma(HOJE.slice(0, 7), -3), ci = CI(), ccs = C.listaCC(DB);
+  const lanc = DB.lancamentos.filter(l => l.comp >= c0).map(l => Object.assign({}, l, { status: C.statusLanc(l, HOJE, CFG).t, conferencia: C.conferirPDF(l, ci[l.contrato], ccs) }));
+  const d = { versaoPainel: C.VERSAO, versaoTela: ($('#verLbl') || {}).textContent || '', hoje: HOJE, modo: modo(), pastaEstado: PASTA_ESTADO, contratos: DB.contratos, lancamentos: lanc, config: DB.config.filter(x => !/token/i.test(x.chave)), log: DB.log.slice(-60), leitura: CONC ? { lidos: CONC.lidos, resultado: CONC.resultado.map(x => ({ arquivo: x.arq.nome, caminho: x.arq.caminho, situacao: x.situacao, aplicado: !!x.aplicado, lanc: x.lancId, motivo: x.motivo, cnpj: x.p.doc, nf: x.p.nf, cc: x.p.ccArq || x.p.cc, venc: x.p.venc, liquido: x.p.valor })) } : null };
+  const b = new Blob([JSON.stringify(d)], { type: 'application/json' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'diagnostico-contratos-' + HOJE + '.json'; document.body.appendChild(a); a.click(); a.remove();
+  toast(CONC ? 'Diagnóstico baixado (inclui a leitura da pasta)' : 'Diagnóstico baixado — leia a pasta antes para incluir os PDFs', !CONC);
+}
 async function trocarPastaSolus() { await IDB.set('pastaSolus', null); lerPastaSolus(true); }
 function renderTabsOnly() { if (ABA === 'painel') render(); }
 
@@ -1283,6 +1292,7 @@ document.addEventListener('click', async e => {
   else if (a === 'cobrar') { const r = await act('cobrar', { id }, { noRender: true }); if (r && r.ok && modo() === 'local') mostrarEmails(r.emails); }
   else if (a === 'desv') act('desvincular', { id });
   else if (a === 'porque') porque(id);
+  else if (a === 'diag') baixarDiagnostico();
   else if (a === 'limpaDia') { F.dia = ''; render(); }
   else if (a === 'lote') { await act('atualizarLancamentos', { itens: [...SEL].map(id => ({ id, campos: { [b.dataset.f]: 'S' } })) }); SEL.clear(); render(); }
   else if (a === 'loteCobrar') { const all = []; for (const id of SEL) { const r = await act('cobrar', { id }, { noRender: true, silent: true }); if (r && r.ok) all.push(...r.emails); } SEL.clear(); render(); if (modo() === 'local') mostrarEmails(all); else toast(all.length + ' cobrança(s) enviada(s)'); }
