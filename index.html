@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"><meta name="robots" content="noindex,nofollow"><meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Contratos Recorrentes</title>
 <meta name="color-scheme" content="dark light">
 <script>(function(){var t='dark';try{t=localStorage.getItem('cr_tema')||'dark'}catch(e){}document.documentElement.setAttribute('data-theme',t)})();</script>
@@ -67,6 +67,7 @@ table.t{border-collapse:collapse;width:100%;font-size:12.5px}
 .p-atras,.p-venc,.p-vencido{background:var(--crit-s);color:var(--crit)}
 .p-lanc{background:var(--info-s);color:var(--info)}
 .p-conc,.p-vig,.p-auto{background:var(--ok-s);color:var(--ok)}
+.p-sem,.p-enc{background:var(--neu-s);color:var(--mute)}
 .p-sugerido,.p-ambiguo{background:var(--info-s);color:var(--info)}
 .p-semvinculo,.p-semLancamento,.p-outroCC{background:var(--crit-s);color:var(--crit)}
 .chip{font:500 10.5px var(--f-c);text-transform:uppercase;letter-spacing:.4px;border:1px solid var(--line);border-radius:3px;padding:0 5px;color:var(--mute)}
@@ -163,13 +164,13 @@ code{font:12px var(--f-m);background:var(--panel2);border:1px solid var(--line);
 /* ===== NÚCLEO COMPARTILHADO (navegador + Google Apps Script) ===== */
 var CORE = (function () {
   var CAMPOS = {
-    CONTRATOS: ['id', 'fornecedor', 'canal', 'doc', 'ident', 'cc', 'servico', 'forma', 'vigencia', 'resp', 'diaProg', 'diaVenc', 'valorRef', 'ativo', 'obs', 'razao', 'regime', 'situacaoCad', 'regimeObs', 'regimeEm', 'regimeAnt', 'regimeMudou', 'aliases', 'chavePlanilha'],
-    LANCAMENTOS: ['id', 'contrato', 'comp', 'dtProg', 'dtVenc', 'lancado', 'dtLanc', 'pago', 'dtPag', 'nf', 'valor', 'arquivo', 'arqUrl', 'arqData', 'conciliado', 'obs', 'atualizado'],
+    CONTRATOS: ['id', 'fornecedor', 'canal', 'doc', 'ident', 'cc', 'servico', 'forma', 'vigencia', 'resp', 'diaProg', 'diaVenc', 'valorRef', 'ativo', 'obs', 'razao', 'regime', 'situacaoCad', 'regimeObs', 'regimeEm', 'regimeAnt', 'regimeMudou', 'aliases', 'chavePlanilha', 'encerramento'],
+    LANCAMENTOS: ['id', 'contrato', 'comp', 'dtProg', 'dtVenc', 'lancado', 'dtLanc', 'pago', 'dtPag', 'nf', 'valor', 'arquivo', 'arqUrl', 'arqData', 'conciliado', 'obs', 'atualizado', 'semCobranca', 'confirmar'],
     RESPONSAVEIS: ['nome', 'email'],
     CONFIG: ['chave', 'valor'],
     LOG: ['quando', 'acao', 'detalhe']
   };
-  var CFG_PADRAO = { diasVig: 60, diasVenc: 3, tolDoc: 2, varPct: 20, emailGestor: '', pastaId: '', horaEnvio: 7, marcosVig: '60,45,30,15,7,3,1,0', diasPasta: 120, autoScore: 70, enviarVazio: 'N', inicio: '', pastaLocal: 'S:\\ADMINISTRATIVO\\1- APROVAÇÃO NF PARA LCTO\\FTP\\1-Nucleo de Notas Fiscais\\2026\\1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS' };
+  var CFG_PADRAO = { diasVig: 60, diasVenc: 3, tolDoc: 2, varPct: 20, emailGestor: '', pastaId: '', horaEnvio: 7, marcosVig: '60,45,30,15,7,3,1,0', diasPasta: 120, diasSemLeitura: 3, autoScore: 70, enviarVazio: 'N', inicio: '', pastaLocal: 'S:\\ADMINISTRATIVO\\1- APROVAÇÃO NF PARA LCTO\\FTP\\1-Nucleo de Notas Fiscais\\2026\\1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS' };
   var MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
   var CC_ALIAS = { 'ADM': 'ADMINISTRAÇÃO', 'ADMINISTRACAO': 'ADMINISTRAÇÃO', 'MATRIZ': 'MATRIZ', 'CMU': 'CENTRO MULTIDISCIPLINAR', 'SPZ': 'SAPEZAL', 'BB': 'BARRA DO BUGRES', 'BBG': 'BARRA DO BUGRES', 'CNP': 'CAMPO NOVO DO PARECIS', 'RP': 'ADMINISTRAÇÃO RP', 'TI': 'ADMINISTRAÇÃO/T.I', 'SUP': 'SUPRIMENTOS', 'CAD': 'CADASTRO' };
 
@@ -267,6 +268,8 @@ var CORE = (function () {
     if (cfg.inicioCalc && l.comp < cfg.inicioCalc && l.lancado !== 'S') return { k: 'hist', t: 'Antes do controle', n: 0 };
     var pdf = !!l.arquivo;
     var dv = dias(hoje, l.dtVenc);
+    if (l.semCobranca && !pdf) return { k: 'sem', t: 'Sem cobrança', n: 0 };
+    if (l.lancado === 'S' && pdf && l.confirmar === 'S') return { k: 'conc', t: 'Lançado · PDF · confirmar', n: 0, conf: true };
     if (l.lancado === 'S') return pdf ? { k: 'conc', t: 'Lançado · PDF', n: 0 } : { k: 'lanc', t: 'Lançado (manual)', n: 0 };
     var dp = dias(l.dtProg, hoje);
     if (dp < 0) return { k: 'aguard', t: 'Aguardando', n: 0 };
@@ -276,6 +279,7 @@ var CORE = (function () {
     return { k: 'verif', t: dp === 0 ? 'Verificar hoje' : 'Verificar doc', n: 2 };
   }
   function statusVig(c, hoje, cfg) {
+    if (c.encerramento && c.encerramento < hoje) return { k: 'enc', t: 'Encerrado em ' + fmtBR(c.encerramento), n: 0, d: null };
     if (!c.vigencia) return { k: 'sem', t: 'Sem vigência', n: 1, d: null };
     if (c.vigencia >= '2900') return { k: 'ind', t: 'Indeterminado', n: 0, d: null };
     var d = dias(hoje, c.vigencia);
@@ -293,14 +297,27 @@ var CORE = (function () {
   }
   function gerarCompetencia(db, comp) {
     var ex = {}, n = 0; db.lancamentos.forEach(function (l) { ex[l.id] = 1; });
-    db.contratos.forEach(function (c) { if (c.ativo === 'N') return; var id = lancId(c.id, comp); if (!ex[id]) { db.lancamentos.push(novoLanc(c, comp)); n++; } });
+    db.contratos.forEach(function (c) { if (c.ativo === 'N' || c.encerramento && comp > String(c.encerramento).slice(0, 7)) return; var id = lancId(c.id, comp); if (!ex[id]) { db.lancamentos.push(novoLanc(c, comp)); n++; } });
     return n;
+  }
+
+  function aplicarEncerramentos(db) { // contrato com data de encerramento: some o que está em aberto depois do mês final
+    var cm = idx(db), n0 = db.lancamentos.length;
+    db.lancamentos = db.lancamentos.filter(function (l) { var c = cm[l.contrato]; if (!c || !c.encerramento || l.comp <= String(c.encerramento).slice(0, 7)) return true; return l.arquivo || l.lancado === 'S' || l.semCobranca || l.conciliado === 'H'; });
+    return n0 - db.lancamentos.length;
   }
 
   /* ---- Migração das abas mensais "PLANILHA DE DESPESAS MMAAAA" ---- */
   function chaveSync(x) { return chave(x.fornecedor, x.cc, x.servico) + '|' + norm(x.ident); }
   function listaCfg(db, k) { var e = (db.config || []).filter(function (r) { return r.chave === k; })[0]; try { return e && e.valor ? JSON.parse(e.valor) : []; } catch (er) { return []; } }
   function gravarCfg(db, k, lista) { db.config = (db.config || []).filter(function (r) { return r.chave !== k; }); if (lista.length) db.config.push({ chave: k, valor: JSON.stringify(lista) }); }
+  function ultimaLeitura(db) { var e = (db.config || []).filter(function (r) { return r.chave === 'ultimaLeitura'; })[0]; return e ? String(e.valor || '') : ''; }
+  function gravarCfg1(db, k, v) { db.config = (db.config || []).filter(function (r) { return r.chave !== k; }); db.config.push({ chave: k, valor: v }); }
+  function avisoLeitura(db, hoje, cfg) { // texto de aviso se a pasta do SOLUS não é lida há dias ('' se está em dia)
+    var u = ultimaLeitura(db), lim = Number(cfg.diasSemLeitura) || 3, d = u ? dias(u, hoje) : null;
+    if (d == null) return 'A pasta do SOLUS ainda não foi lida pelo painel. Abra o painel no computador que enxerga a pasta e clique em “Ler pasta do SOLUS agora”.';
+    return d >= lim ? 'A pasta do SOLUS não é lida há ' + d + ' dias (última leitura em ' + fmtBR(u) + '). A situação “lançado / pendente” pode estar desatualizada.' : '';
+  }
   function excluidosDe(db) { var e = (db.config || []).filter(function (r) { return r.chave === 'excluidos'; })[0]; try { return e && e.valor ? JSON.parse(e.valor) : []; } catch (er) { return []; } }
   function gravarExcluidos(db, lista) { db.config = (db.config || []).filter(function (r) { return r.chave !== 'excluidos'; }); if (lista.length) db.config.push({ chave: 'excluidos', valor: JSON.stringify(lista) }); }
   function chave(nome, cc, serv) { return norm(nome) + '|' + norm(cc) + '|' + norm(serv); }
@@ -453,7 +470,7 @@ var CORE = (function () {
   }
 
   /* ---- Cruzamento arquivo × lançamento ---- */
-  function historicoValores(db) { var h = {}; db.lancamentos.forEach(function (l) { var v = numBR(l.valor); if (v != null) (h[l.contrato] = h[l.contrato] || []).push(v); }); return h; }
+  function historicoValores(db) { var h = {}; db.lancamentos.forEach(function (l) { var v = numBR(l.valor); if (v != null && l.confirmar !== 'S') (h[l.contrato] = h[l.contrato] || []).push(v); }); return h; }
   function media(a) { return a.length ? a.reduce(function (s, x) { return s + x; }, 0) / a.length : null; }
   function difDiaVenc(venc, c) { var a = venc ? +venc.slice(8, 10) : 0, b = c ? diaNum(c.diaVenc) : 0; if (!a || !b) return 0; var x = Math.abs(a - b); return Math.min(x, 31 - x); } // distância entre dias do mês (31 ↔ 1 = 1)
   function conciliar(db, arquivos, hoje, cfg, histPre) {
@@ -551,13 +568,13 @@ var CORE = (function () {
       var mH = function (l) { var c = idx(db)[l.contrato] || {}, m = media(hist[l.contrato] || []); return m != null ? m : (numBR(c.valorRef) || 0); };
       outs.sort(function (a, b) { return (b.p.valor || 0) - (a.p.valor || 0); }); abertos.sort(function (a, b) { return mH(b) - mH(a) || (a.contrato < b.contrato ? -1 : 1); });
       var semHist = abertos.every(function (l) { return !(hist[l.contrato] || []).length; });
-      outs.forEach(function (x, i) { var l = abertos[i]; x.lancId = l.id; x.opcoes = abertos.map(function (y) { return y.id; }); tomados[l.id] = 1; x.situacao = 'auto'; x.motivo = x.motivo.filter(function (m) { return !/contratos possíveis/.test(m); }).concat(['pareado: ' + outs.length + ' PDFs para ' + outs.length + ' contratos do mesmo fornecedor e CC' + (semHist ? ' (confira se o valor ficou no contrato certo)' : '')]); });
+      outs.forEach(function (x, i) { var l = abertos[i]; x.lancId = l.id; x.opcoes = abertos.map(function (y) { return y.id; }); tomados[l.id] = 1; x.situacao = 'auto'; if (semHist) x.confirmar = true; x.motivo = x.motivo.filter(function (m) { return !/contratos possíveis/.test(m); }).concat(['pareado: ' + outs.length + ' PDFs para ' + outs.length + ' contratos do mesmo fornecedor e CC' + (semHist ? ' (confira se o valor ficou no contrato certo)' : '')]); });
     });
     res.forEach(function (x) { delete x._grp; delete x._ls; });
     // um PDF que cobre vários contratos equivalentes (ex.: fatura única de vários veículos no mesmo CC)
     var cm3 = idx(db), extras = [];
     res.forEach(function (x) {
-      if (!x.lancId || ['auto', 'sugerido'].indexOf(x.situacao) < 0) return;
+      if (!x.lancId || ['auto', 'sugerido'].indexOf(x.situacao) < 0 || rot(x.arq) === 0) return; // PDF com o contrato indicado no nome (ex.: "(MATRIZ CONTRATO 71)") cobre só ele
       var pr = x.lancId.split('@'), c0 = cm3[pr[0]]; if (!c0) return; var k0 = equivContrato(c0);
       db.contratos.forEach(function (c) {
         if (c.id === c0.id || c.ativo === 'N' || equivContrato(c) !== k0) return;
@@ -578,13 +595,13 @@ var CORE = (function () {
     });
     return n;
   }
-  function aplicarVinculo(db, lid, a, p, hoje, aprender) {
+  function aplicarVinculo(db, lid, a, p, hoje, aprender, conf) {
     var l = db.lancamentos.filter(function (x) { return x.id === lid; })[0]; if (!l) return false;
     var c = idx(db)[l.contrato];
     l.arquivo = a.nome; l.arqUrl = a.url || ''; l.arqData = p.data || '';
     if (p.nf && (!l.nf || l.conciliado !== 'M')) l.nf = p.nf; if (p.valor != null) l.valor = p.valor; // valor e NF vêm do PDF vinculado
     if (l.lancado !== 'S') { l.lancado = 'S'; l.dtLanc = p.data || hoje; }
-    l.conciliado = 'S';
+    l.conciliado = 'S'; l.confirmar = conf ? 'S' : ''; l.semCobranca = '';
     l.atualizado = hoje;
     if (aprender && c && !docOk(c) && p.doc && cnpjValido(normDoc(p.doc))) c.doc = normDoc(p.doc); // corrige CNPJ em branco ou digitado errado pelo do PDF
     if (c && p.fornecedor) { var ka = chaveAlias(p), al = (c.aliases || '').split('|').filter(Boolean); if (al.indexOf(ka) < 0) { al.unshift(ka); c.aliases = al.slice(0, 6).join('|'); } }
@@ -626,7 +643,7 @@ var CORE = (function () {
     al = al.filter(function (a) { return a.k !== 'vig' || forcar || diaSemana(hoje) === 1 || a.dvig < 0 && diaSemana(hoje) === 1 || marcos.indexOf(a.dvig) >= 0; });
     var emails = {}; (db.responsaveis || []).forEach(function (r) { emails[norm(r.nome)] = r.email; });
     var grupos = {}; al.forEach(function (a) { var k = norm(a.resp) || 'SEM RESPONSAVEL'; (grupos[k] = grupos[k] || { nome: a.resp || 'Sem responsável', itens: [] }).itens.push(a); });
-    var msgs = [];
+    var msgs = [], avL = avisoLeitura(db, hoje, cfg), avH = avL ? '<p style="background:#FFF4E5;border:1px solid #F0C36D;padding:8px 10px;border-radius:6px"><b>⚠ ' + esc(avL) + '</b></p>' : '';
     Object.keys(grupos).forEach(function (k) {
       var g = grupos[k], para = emails[k] || cfg.emailGestor || '';
       var n3 = g.itens.filter(function (a) { return a.n === 3; }).length;
@@ -634,7 +651,8 @@ var CORE = (function () {
         html: '<div style="font:14px Arial,sans-serif;color:#15241F"><p>Olá, ' + esc(g.nome) + '.</p><p>Os documentos abaixo precisam ser <b>verificados e lançados</b> (contas recorrentes mensais):</p>' + tabelaEmail(g.itens) + '<p style="color:#5B6B66;font-size:12px">Depois de lançar no SOLUS, o PDF salvo na pasta de lançamentos é reconhecido automaticamente na próxima leitura da pasta.</p></div>',
         texto: 'Olá, ' + g.nome + '.\nPendências de verificação/lançamento:\n' + textoEmail(g.itens) });
     });
-    if (cfg.emailGestor && al.length) msgs.push({ para: cfg.emailGestor, cc: '', resp: 'Gestor (consolidado)', qtd: al.length, assunto: '[Contratos] Consolidado — ' + al.length + ' pendência(s) — ' + fmtBR(hoje), html: '<div style="font:14px Arial,sans-serif"><p>Resumo consolidado das pendências de contratos recorrentes.</p>' + tabelaEmail(al) + '</div>', texto: textoEmail(al) });
+    if (cfg.emailGestor && al.length) msgs.push({ para: cfg.emailGestor, cc: '', resp: 'Gestor (consolidado)', qtd: al.length, assunto: '[Contratos] Consolidado — ' + al.length + ' pendência(s) — ' + fmtBR(hoje), html: '<div style="font:14px Arial,sans-serif">' + avH + '<p>Resumo consolidado das pendências de contratos recorrentes.</p>' + tabelaEmail(al) + '</div>', texto: (avL ? '⚠ ' + avL + '\n' : '') + textoEmail(al) });
+    else if (cfg.emailGestor && avL) msgs.push({ para: cfg.emailGestor, cc: '', resp: 'Gestor (aviso)', qtd: 0, assunto: '[Contratos] ⚠ Pasta do SOLUS sem leitura — ' + fmtBR(hoje), html: '<div style="font:14px Arial,sans-serif">' + avH + '</div>', texto: '⚠ ' + avL });
     return msgs;
   }
   function montarCobranca(db, lid, hoje, cfg) {
@@ -662,7 +680,7 @@ var CORE = (function () {
   }
   function indicadores(db, comps, cfg) {
     var set = {}; comps.forEach(function (c) { set[c] = 1; });
-    var ls = db.lancamentos.filter(function (l) { return set[l.comp] && l.conciliado !== 'H'; }), r = { total: ls.length, lanc: 0, noPrazo: 0, atrasoMed: 0, antesVenc: 0, pdf: 0 }, soma = 0, na = 0;
+    var ls = db.lancamentos.filter(function (l) { return set[l.comp] && l.conciliado !== 'H' && !(l.semCobranca && !l.arquivo); }), r = { total: ls.length, lanc: 0, noPrazo: 0, atrasoMed: 0, antesVenc: 0, pdf: 0 }, soma = 0, na = 0;
     ls.forEach(function (l) {
       if (l.lancado === 'S') { r.lanc++; if (l.dtLanc) { var d = dias(l.dtProg, l.dtLanc); soma += Math.max(0, d); na++; if (d <= cfg.tolDoc) r.noPrazo++; } }
       if (l.lancado === 'S' && (!l.dtLanc || l.dtLanc <= l.dtVenc)) r.antesVenc++;
@@ -682,7 +700,7 @@ var CORE = (function () {
     p = p || {}; var hoje = ctx.hoje, cfg = cfgDe(db), dirty = {}, r = { ok: true, msg: '' };
     function log(a, d) { (db.log = db.log || []).push({ quando: hoje + ' ' + (ctx.hora || ''), acao: a, detalhe: String(d).slice(0, 400) }); dirty.LOG = 1; }
     switch (acao) {
-      case 'gerarCompetencia': { var n = gerarCompetencia(db, p.comp); if (n) dirty.LANCAMENTOS = 1; r.msg = n ? n + ' lançamento(s) criados para ' + fmtComp(p.comp) : 'Competência ' + fmtComp(p.comp) + ' já estava gerada'; break; }
+      case 'gerarCompetencia': { var n = gerarCompetencia(db, p.comp); if (n || aplicarEncerramentos(db)) dirty.LANCAMENTOS = 1; r.msg = n ? n + ' lançamento(s) criados para ' + fmtComp(p.comp) : 'Competência ' + fmtComp(p.comp) + ' já estava gerada'; break; }
       case 'salvarContrato': {
         var c = p.contrato; c.doc = dig(c.doc); c.diaProg = diaNum(c.diaProg) || ''; c.diaVenc = diaNum(c.diaVenc) || '';
         if (!c.id) { var mx = 0; db.contratos.forEach(function (x) { mx = Math.max(mx, parseInt(dig(x.id), 10) || 0); }); c.id = 'C' + pad3(mx + 1); c.ativo = c.ativo || 'S'; db.contratos.push(c); }
@@ -690,6 +708,7 @@ var CORE = (function () {
         var cc = idx(db)[c.id];
         db.lancamentos.forEach(function (l) { if (l.contrato === cc.id && l.lancado !== 'S' && l.comp >= hoje.slice(0, 7)) { var nl = novoLanc(cc, l.comp); l.dtProg = nl.dtProg; l.dtVenc = nl.dtVenc; dirty.LANCAMENTOS = 1; } });
         if (p.gerar !== false && cc.ativo !== 'N') { if (gerarCompetencia(db, hoje.slice(0, 7))) dirty.LANCAMENTOS = 1; }
+        if (aplicarEncerramentos(db)) dirty.LANCAMENTOS = 1;
         dirty.CONTRATOS = 1; r.msg = 'Contrato ' + cc.id + ' salvo'; r.id = cc.id; break;
       }
       case 'excluirContrato': {
@@ -713,19 +732,24 @@ var CORE = (function () {
       case 'conciliar': {
         var arqs = p.arquivos && p.arquivos.length ? p.arquivos : (ctx.listarPasta ? ctx.listarPasta(cfg) : []);
         // refaz os vínculos automáticos dos PDFs lidos agora (corrige vínculos feitos por versões anteriores); vínculos manuais (M) ficam
-        var histPre = historicoValores(db), lidosN = {}, antes = {}; arqs.forEach(function (a) { lidosN[norm(a.nome)] = 1; });
-        db.lancamentos.forEach(function (l) { if (l.arquivo && l.conciliado === 'S' && lidosN[norm(l.arquivo)]) { antes[l.id] = { arquivo: l.arquivo, arqUrl: l.arqUrl, arqData: l.arqData, lancado: l.lancado, dtLanc: l.dtLanc, nf: l.nf, valor: l.valor }; l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; l.nf = ''; l.valor = ''; } });
+        var s0L = JSON.stringify(db.lancamentos), s0C = JSON.stringify(db.contratos), histPre = historicoValores(db), lidosN = {}, antes = {}; arqs.forEach(function (a) { lidosN[norm(a.nome)] = 1; });
+        db.lancamentos.forEach(function (l) { if (l.arquivo && l.conciliado === 'S' && lidosN[norm(l.arquivo)]) { antes[l.id] = { arquivo: l.arquivo, arqUrl: l.arqUrl, arqData: l.arqData, lancado: l.lancado, dtLanc: l.dtLanc, nf: l.nf, valor: l.valor, atualizado: l.atualizado, confirmar: l.confirmar, semCobranca: l.semCobranca }; l.arquivo = l.arqUrl = l.arqData = ''; l.confirmar = ''; l.conciliado = ''; l.lancado = ''; l.dtLanc = ''; l.nf = ''; l.valor = ''; } });
         var rep = repararVinculos(db), ccsV = listaCC(db);
         db.lancamentos.forEach(function (l) { if (!l.arquivo || l.conciliado !== 'S') return; var pv = parseArquivo(l.arquivo, '', ccsV); if (pv.valor != null && numBR(l.valor) !== pv.valor) { l.valor = pv.valor; if (pv.nf) l.nf = pv.nf; rep++; } }); // valor gravado diferente do PDF ligado
         if (rep) dirty.LANCAMENTOS = 1;
         var res = conciliar(db, arqs, hoje, cfg, histPre), apl = 0; // histórico de valores de antes da reavaliação
-        if (p.aplicarAuto) res.forEach(function (x) { if (x.situacao === 'auto' && aplicarVinculo(db, x.lancId, x.arq, x.p, hoje, true)) { x.aplicado = true; apl++; } });
+        if (p.aplicarAuto) res.forEach(function (x) { if (x.situacao === 'auto' && aplicarVinculo(db, x.lancId, x.arq, x.p, hoje, true, x.confirmar)) { x.aplicado = true; apl++; } });
         var usados = {}; db.lancamentos.forEach(function (l) { if (l.arquivo) usados[norm(l.arquivo)] = 1; });
         var mud = 0; db.lancamentos.forEach(function (l) { var a0 = antes[l.id]; if (!a0) return;
-          if (!l.arquivo && !usados[norm(a0.arquivo)]) { l.arquivo = a0.arquivo; l.arqUrl = a0.arqUrl; l.arqData = a0.arqData; l.lancado = a0.lancado; l.dtLanc = a0.dtLanc; l.nf = a0.nf; l.valor = a0.valor; l.conciliado = 'S'; usados[norm(a0.arquivo)] = 1; } // vínculo antigo continua valendo (ex.: confirmado à mão)
+          if (!l.arquivo && !usados[norm(a0.arquivo)]) { l.arquivo = a0.arquivo; l.arqUrl = a0.arqUrl; l.arqData = a0.arqData; l.lancado = a0.lancado; l.dtLanc = a0.dtLanc; l.nf = a0.nf; l.valor = a0.valor; l.atualizado = a0.atualizado; l.confirmar = a0.confirmar; l.conciliado = 'S'; usados[norm(a0.arquivo)] = 1; }
+          else if (l.arquivo === a0.arquivo && l.conciliado === 'S') { l.atualizado = a0.atualizado; if (a0.dtLanc && a0.lancado === 'S') l.dtLanc = a0.dtLanc; } // mesma ligação de antes: nada mudou // vínculo antigo continua valendo (ex.: confirmado à mão)
           if (l.arquivo !== a0.arquivo) mud++; });
-        if (apl || mud) { dirty.LANCAMENTOS = dirty.CONTRATOS = 1; }
-        log('conciliar', arqs.length + ' PDF(s) lidos · ' + apl + ' vínculo(s) automáticos');
+        // só grava o que realmente mudou nesta leitura
+        var mudL = JSON.stringify(db.lancamentos) !== s0L, mudC = JSON.stringify(db.contratos) !== s0C;
+        if (mudL) dirty.LANCAMENTOS = 1; else delete dirty.LANCAMENTOS;
+        if (mudC) dirty.CONTRATOS = 1; else delete dirty.CONTRATOS;
+        if (arqs.length && ultimaLeitura(db) !== hoje) { gravarCfg1(db, 'ultimaLeitura', hoje); dirty.CONFIG = 1; }
+        if (mudL || mudC) log('conciliar', arqs.length + ' PDF(s) lidos · ' + apl + ' vínculo(s) automáticos');
         r.resultado = res; r.lidos = arqs.length; r.msg = arqs.length + ' arquivo(s) lidos · ' + apl + ' vinculado(s) automaticamente';
         if (p.resumo && ctx.enviarEmail) {
           var jaHoje = (db.log || []).some(function (l) { return l.acao === 'resumoConciliacao' && String(l.quando).slice(0, 10) === hoje; });
@@ -749,8 +773,9 @@ var CORE = (function () {
         var ok = 0; (p.vinculos || []).forEach(function (v) { if (aplicarVinculo(db, v.lancId, v.arq, v.p || parseArquivo(v.arq.nome, v.arq.caminho, listaCC(db), v.arq.data), hoje, p.aprender !== false)) { ok++; db.lancamentos.forEach(function (l) { if (l.id === v.lancId) l.conciliado = 'M'; }); } });
         dirty.LANCAMENTOS = dirty.CONTRATOS = 1; log('vincular', ok); r.msg = ok + ' documento(s) vinculado(s)'; break;
       }
+      case 'confirmarLigacao': { var nC = 0; db.lancamentos.forEach(function (l) { if ((p.ids || []).indexOf(l.id) >= 0 && l.arquivo) { l.confirmar = ''; l.conciliado = 'M'; l.atualizado = hoje + (ctx.usuario ? ' ' + ctx.usuario : ''); nC++; } }); if (nC) dirty.LANCAMENTOS = 1; r.msg = nC + ' ligação(ões) confirmada(s)'; break; }
       case 'desvincular': {
-        db.lancamentos.forEach(function (l) { if (l.id === p.id) { if (l.arquivo) { var rj = listaCfg(db, 'rejeitados'), kr = norm(l.arquivo) + '>' + l.id; if (rj.indexOf(kr) < 0) rj.push(kr); gravarCfg(db, 'rejeitados', rj.slice(-300)); dirty.CONFIG = 1; } l.arquivo = l.arqUrl = l.arqData = ''; l.conciliado = ''; } }); dirty.LANCAMENTOS = 1; r.msg = 'PDF desvinculado — a leitura da pasta não liga mais este PDF a este lançamento'; break;
+        db.lancamentos.forEach(function (l) { if (l.id === p.id) { if (l.arquivo) { var rj = listaCfg(db, 'rejeitados'), kr = norm(l.arquivo) + '>' + l.id; if (rj.indexOf(kr) < 0) rj.push(kr); gravarCfg(db, 'rejeitados', rj.slice(-300)); dirty.CONFIG = 1; } l.arquivo = l.arqUrl = l.arqData = ''; l.confirmar = ''; l.conciliado = ''; } }); dirty.LANCAMENTOS = 1; r.msg = 'PDF desvinculado — a leitura da pasta não liga mais este PDF a este lançamento'; break;
       }
       case 'salvarRegime': { var md = aplicarRegime(db, p.itens || [], hoje); dirty.CONTRATOS = 1; if (md.length) log('enquadramento', md.join(' | ')); r.mudancas = md; r.msg = (p.msg || ((p.itens || []).filter(function (x) { return !x.erro; }).length + ' enquadramento(s) atualizado(s)')) + (md.length ? ' · ' + md.length + ' alteração(ões)' : ''); break; }
       case 'consultarRegime': {
@@ -759,7 +784,7 @@ var CORE = (function () {
         r.mudancas = md2; r.msg = q0.msg + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
       case 'restaurarExcluido': { var exR2 = excluidosDe(db).filter(function (k) { return k !== p.chave; }); gravarExcluidos(db, exR2); dirty.CONFIG = 1; r.msg = 'Linha liberada: o contrato volta a ser cadastrado a partir da planilha'; break; }
-      case 'salvarConfig': { var exS = excluidosDe(db), rjS = listaCfg(db, 'rejeitados'); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos' && k !== 'rejeitados'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); gravarCfg(db, 'rejeitados', rjS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
+      case 'salvarConfig': { var exS = excluidosDe(db), rjS = listaCfg(db, 'rejeitados'), ulS = ultimaLeitura(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos' && k !== 'rejeitados' && k !== 'ultimaLeitura'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); gravarCfg(db, 'rejeitados', rjS); if (ulS) gravarCfg1(db, 'ultimaLeitura', ulS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
       case 'salvarResponsaveis': { db.responsaveis = (p.lista || []).filter(function (x) { return x.nome; }); dirty.RESPONSAVEIS = 1; r.msg = 'Responsáveis salvos'; break; }
       case 'previaAlertas': { r.emails = montarEmails(db, hoje, cfg, !!p.forcar); break; }
       case 'enviarAlertas': {
@@ -786,7 +811,8 @@ var CORE = (function () {
         // datas dos lançamentos em aberto seguem sempre os dias atuais do contrato (corrige contrato alterado direto na aba CONTRATOS)
         var cmD = idx(db), nDt = 0; db.lancamentos.forEach(function (l) { var c = cmD[l.contrato]; if (!c || l.arquivo || l.lancado === 'S' || l.conciliado === 'H' || !diaNum(c.diaProg)) return; var nl = novoLanc(c, l.comp); if (nl.dtProg !== l.dtProg || nl.dtVenc !== l.dtVenc) { l.dtProg = nl.dtProg; l.dtVenc = nl.dtVenc; nDt++; } });
         if (nDt) { dirty.LANCAMENTOS = 1; log('datasAjustadas', nDt + ' lançamento(s) com programação/vencimento atualizados pelo contrato'); }
-        var mg0 = migrar(p.tabs, hoje), shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
+        var mg0; try { mg0 = migrar(p.tabs, hoje); } catch (eM) { r.msg = 'Sem a Página1: sincronização com a planilha desligada (os contratos seguem pela aba CONTRATOS)'; r.alterados = 0; r.relatorio = { linhas: [], soPainel: [] }; break; }
+        var shs = mg0.contratos, alt = 0, novos = 0, usadoDb = {}, usadoSh = {}, pares = [], nomesN = [];
         var cpt = function (x) { return norm(x.fornecedor).replace(/[^A-Z0-9]/g, ''); };
         // remove contratos duplicados criados antes (mesmo nome sem pontuação, mesmo CC e vencimento): fica o mais antigo, com os lançamentos
         var gD = {}; db.contratos.forEach(function (x) { var k = cpt(x) + '|' + canonCC(x.cc) + '|' + (+x.diaVenc || 0); (gD[k] = gD[k] || []).push(x); });
@@ -834,7 +860,7 @@ var CORE = (function () {
         var excl = excluidosDe(db); shs.forEach(function (s, i) { if (!usadoSh[i] && excl.indexOf(k1(s)) >= 0) usadoSh[i] = 1; }); // excluídos no painel não voltam
         var renov = [];
         pares.forEach(function (pr) { var kp = k1(pr[1]); if (pr[0].chavePlanilha !== kp) { pr[0].chavePlanilha = kp; dirty.CONTRATOS = 1; } });
-        pares.forEach(function (pr) { if (pr[1].doc && dig(pr[0].doc) !== pr[1].doc) { pr[0].doc = pr[1].doc; alt++; } if (pr[1].vigencia && pr[1].vigencia > String(pr[0].vigencia || '')) { renov.push(pr[0].fornecedor + ' (' + pr[0].cc + '): ' + fmtBR(pr[0].vigencia) + ' → ' + fmtBR(pr[1].vigencia)); pr[0].vigencia = pr[1].vigencia; alt++; } });
+        pares.forEach(function (pr) { if (pr[1].doc && dig(pr[0].doc) !== pr[1].doc && (cnpjValido(pr[1].doc) || !cnpjValido(pr[0].doc))) { pr[0].doc = pr[1].doc; alt++; } /* CNPJ inválido da planilha não sobrescreve um CNPJ válido já corrigido no painel */ if (pr[1].vigencia && pr[1].vigencia > String(pr[0].vigencia || '')) { renov.push(pr[0].fornecedor + ' (' + pr[0].cc + '): ' + fmtBR(pr[0].vigencia) + ' → ' + fmtBR(pr[1].vigencia)); pr[0].vigencia = pr[1].vigencia; alt++; } });
         if (renov.length) log('vigenciaRenovada', renov.join(' | '));
         var mx = 0; db.contratos.forEach(function (x) { mx = Math.max(mx, parseInt(dig(x.id), 10) || 0); });
         var exR = {}; (db.responsaveis || []).forEach(function (x) { exR[norm(x.nome)] = 1; });
@@ -855,7 +881,7 @@ var CORE = (function () {
         r.resumo = mg.resumo; r.msg = (p.substituir || r.msgCNPJ === undefined) ? mg.resumo.contratos + ' contratos e ' + mg.resumo.lancamentos + ' lançamentos importados de ' + mg.resumo.abas + ' aba(s)' : r.msgCNPJ; break;
       }
       case 'rotinaDiaria': {
-        var a1 = gerarCompetencia(db, hoje.slice(0, 7)) + (+hoje.slice(8) >= 20 ? gerarCompetencia(db, compSoma(hoje.slice(0, 7), 1)) : 0); if (a1) dirty.LANCAMENTOS = 1;
+        var a1 = gerarCompetencia(db, hoje.slice(0, 7)) + (+hoje.slice(8) >= 20 ? gerarCompetencia(db, compSoma(hoje.slice(0, 7), 1)) : 0); if (a1 || aplicarEncerramentos(db)) dirty.LANCAMENTOS = 1;
         var cr; try { cr = executar(db, 'conciliar', { aplicarAuto: true }, ctx); Object.keys(cr.dirty || {}).forEach(function (k) { dirty[k] = 1; }); } catch (e) { cr = { msg: 'conciliação não executada (' + e.message + ')' }; }
         var rg = { msg: '' }; if (diaSemana(hoje) === 1 && ctx.buscarCNPJ) { try { rg = executar(db, 'consultarRegime', {}, ctx); dirty.CONTRATOS = 1; } catch (e) { rg = { msg: 'enquadramento não consultado (' + e.message + ')' }; } }
         var ea = executar(db, 'enviarAlertas', {}, ctx); Object.keys(ea.dirty || {}).forEach(function (k) { dirty[k] = 1; });
@@ -866,7 +892,7 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.10.20i', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.11.14c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, avisoLeitura: avisoLeitura, ultimaLeitura: ultimaLeitura, aplicarEncerramentos: aplicarEncerramentos, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -878,7 +904,7 @@ const hj = new Date(), HOJE = C.iso(hj.getFullYear(), hj.getMonth() + 1, hj.getD
 let DB = { contratos: [], lancamentos: [], responsaveis: [], config: [], log: [] }, CFG = C.cfgDe(DB), COMP = HOJE.slice(0, 7);
 let ABA = (location.hash || '').replace('#', '') || LS.get('cr_aba') || 'painel';
 let F = { q: '', resp: '', cc: '', st: '', dia: '' }, FC = { q: '', cc: '', vig: '', ativo: 'S' }, FA = '', CONC = null, SEL = new Set();
-const CONEX_PADRAO = {"api": "https://script.google.com/macros/s/AKfycbxvfLHx_Mhl47T0EUOb8PNMyOakbYQaHuWbNm6ukMdmlMbyASXiKHIfXWHVCeN6yXJhJQ/exec", "token": ""};
+const CONEX_PADRAO = { api: "", token: "0e1de75f326fd1c7a4b3392715d7ca88" };
 const _cx = LS.get('cr_conexao') || {};
 const CONEX = { api: _cx.api || CONEX_PADRAO.api, token: _cx.token || CONEX_PADRAO.token };
 
@@ -940,14 +966,14 @@ function vPainel() {
   const hist = ls.length && st.every(s => s.k === 'hist');
   const gerar = !ls.length ? `<div class="card"><div class="bd row"><b>Competência ${C.fmtComp(COMP)} ainda não foi gerada.</b><span class="hint">Cria um lançamento para cada contrato ativo, com as datas de programação e vencimento do mês.</span><button class="btn pri" data-act="gerar">Gerar ${C.fmtComp(COMP)}</button></div></div>` : '';
   const k = (cls, lbl, n, sub, go) => `<button class="kpi ${cls}" data-go="${go}"><small>${lbl}</small><b>${n}</b><em>${sub}</em></button>`;
-  const conc = cnt('conc'), tot = ls.length;
+  const sem = cnt('sem'), conf = st.filter(s => s.conf).length, conc = cnt('conc'), tot = ls.length - sem;
   const kp = `<div class="kpis">
     ${k('', 'Contratos ativos', ativos.length, DB.contratos.filter(c => c.ativo !== 'N' && !C.dig(c.doc)).length + ' sem CNPJ/CPF', 'contratos|')}
     ${k(cnt('verif') ? 'warn' : '', 'Verificar documento', cnt('verif'), 'programação chegou', 'lanc|verif')}
     ${k(cnt(['atras', 'venc']) ? 'crit' : '', 'Atrasados / vencidos', cnt(['atras', 'venc']), 'doc > ' + CFG.tolDoc + 'd ou venc. passou', 'lanc|crit')}
     ${k(cnt('avenc') ? 'crit' : '', 'Vencem em ≤ ' + CFG.diasVenc + ' dias', cnt('avenc'), 'ainda sem lançamento', 'lanc|avenc')}
     ${k(cnt('lanc') ? 'info' : '', 'Lançados s/ PDF', cnt('lanc'), 'marcados à mão · conferir na pasta', 'conc|')}
-    ${k('ok', 'Lançados com PDF', conc + '/' + tot, tot ? Math.round(conc / tot * 100) + '% da competência' : '—', 'lanc|conc')}
+    ${k('ok', 'Lançados com PDF', conc + '/' + tot, (tot ? Math.round(conc / tot * 100) + '% da competência' : '—') + (conf ? ' · ' + conf + ' p/ confirmar' : '') + (sem ? ' · ' + sem + ' sem cobrança' : ''), conf ? 'lanc|confirmar' : 'lanc|conc')}
     ${k(vg.some(s => s.n === 3) ? 'crit' : vg.some(s => s.n === 2) ? 'warn' : '', 'Vigência', vg.filter(s => s.n >= 2).length, vg.filter(s => s.k === 'vencido').length + ' vencido(s) · ≤ ' + CFG.diasVig + 'd qualificação', 'contratos|alerta')}
   </div>`;
   let al = C.alertas(DB, HOJE, CFG); const tipos = uniq(al.map(a => a.tipo));
@@ -955,10 +981,10 @@ function vPainel() {
   const fila = al.slice(0, 60).map(a => `<div class="al n${a.n}"><span class="sv"></span><div style="min-width:0"><div class="ti">${esc(a.tipo)} · ${esc(a.st)}</div><div class="fn" style="font:600 13px var(--f-c)">${esc(a.forn)}</div><div class="sub"><span>${esc(a.cc)}</span><span>${esc(a.serv)}</span>${a.ident ? `<span>${esc(a.ident)}</span>` : ''}${a.canal ? `<span class="chip">${esc(a.canal)}</span>` : ''}${a.k === 'vig' ? `<span>vigência ${C.fmtBR(a.data)}</span>` : `<span>prog ${diaBR(a.dtProg)} · venc ${diaBR(a.dtVenc)}</span><span>${C.fmtComp(a.comp)}</span>`}<span>${esc(a.resp || 'sem responsável')}</span></div></div><div class="ac">${a.k === 'vig' ? `<button class="btn sm" data-act="editC" data-id="${a.contrato}">Contrato</button>` : `${['verif', 'atras', 'venc', 'avenc'].includes(a.k) ? `<button class="btn sm" data-act="marca" data-id="${a.lancId}" data-f="lancado">✓ Lançado</button>` : ''}<button class="btn sm" data-act="cobrar" data-id="${a.lancId}" title="E-mail ao responsável">✉ Cobrar</button>`}</div></div>`).join('');
   const resp = {}; C.alertas(DB, HOJE, CFG).forEach(a => { const r = a.resp || '—'; resp[r] = resp[r] || { p: 0, c: 0 }; resp[r].p++; if (a.n === 3) resp[r].c++; });
   const em = {}; DB.responsaveis.forEach(r => em[C.norm(r.nome)] = r.email);
-  const ultC = DB.log.filter(l => l.acao === 'conciliar').map(l => String(l.quando)).sort().pop();
+  const ultC = C.ultimaLeitura(DB) || DB.log.filter(l => l.acao === 'conciliar').map(l => String(l.quando)).sort().pop();
   const diasC = ultC ? C.dias(ultC.slice(0, 10), HOJE) : null;
   const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button> <button class="btn sm" data-act="diag" title="Gera um arquivo com contratos, lançamentos e o resultado da última leitura da pasta para conferência">⬇ Diagnóstico</button>`;
-  const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC > 1 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(ultC)}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(ultC)}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
+  const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC >= 2 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(C.fmtBR(ultC.slice(0, 10)))}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(C.fmtBR(ultC.slice(0, 10)))}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
   return gerar + aviso + kp + `<div class="grid2">
    <section class="card"><h3>Fila de ação <span class="hint">${al.length} item(ns) · últimas 3 competências + vigência</span><span class="sp chips">${['', ...tipos].map(t => `<button class="fch" data-fa="${esc(t)}" aria-pressed="${FA === t}">${t || 'Todos'}</button>`).join('')}</span></h3>
    <div class="fila">${fila || '<div class="empty">Nenhuma pendência. Tudo em dia.</div>'}</div></section>
@@ -984,12 +1010,12 @@ function vLanc() {
   if (!ls.length) return `<div class="card"><div class="bd row"><b>Competência ${C.fmtComp(COMP)} ainda não foi gerada.</b><button class="btn pri" data-act="gerar">Gerar ${C.fmtComp(COMP)}</button></div></div>`;
   const rows = ls.map(l => ({ l, c: ci[l.contrato] || {}, s: C.statusLanc(l, HOJE, CFG) })).filter(({ l, c, s }) => {
     if (F.resp && c.resp !== F.resp) return false; if (F.cc && c.cc !== F.cc) return false;
-    if (F.st === 'crit' ? s.n < 3 : F.st && s.k !== F.st) return false;
+    if (F.st === 'crit' ? s.n < 3 : F.st === 'confirmar' ? !s.conf : F.st && s.k !== F.st) return false;
     if (F.dia && +l.dtProg.slice(8) !== +F.dia && +l.dtVenc.slice(8) !== +F.dia) return false;
     if (F.q) { const q = C.norm(F.q); if (C.norm([c.fornecedor, c.cc, c.servico, c.ident, l.nf, c.doc].join(' ')).indexOf(q) < 0) return false; }
     return true;
   }).sort((a, b) => a.l.dtProg.localeCompare(b.l.dtProg) || a.c.fornecedor.localeCompare(b.c.fornecedor));
-  const all = ls.map(l => ci[l.contrato] || {}), stO = [['', 'Todas as situações'], ['crit', 'Críticos'], ['aguard', 'Aguardando'], ['verif', 'Verificar doc'], ['atras', 'Doc atrasado'], ['avenc', 'Vence s/ lançar'], ['venc', 'Vencido s/ lançar'], ['lanc', 'Lançado (manual)'], ['conc', 'Lançado · PDF'], ['hist', 'Histórico']];
+  const all = ls.map(l => ci[l.contrato] || {}), stO = [['', 'Todas as situações'], ['crit', 'Críticos'], ['aguard', 'Aguardando'], ['verif', 'Verificar doc'], ['atras', 'Doc atrasado'], ['avenc', 'Vence s/ lançar'], ['venc', 'Vencido s/ lançar'], ['lanc', 'Lançado (manual)'], ['conc', 'Lançado · PDF'], ['confirmar', 'Ligação a confirmar'], ['sem', 'Sem cobrança'], ['hist', 'Histórico']];
   const tot = rows.reduce((s, r) => s + (C.numBR(r.l.valor) || 0), 0);
   return `<section class="card"><div class="flt">
    <input type="search" id="fq" placeholder="Buscar fornecedor, CNPJ, NF, UC…" value="${esc(F.q)}">
@@ -1001,7 +1027,7 @@ function vLanc() {
   </div>
   <div class="flt" style="padding-block:6px"><span class="hint">${SEL.size} selecionado(s)</span><button class="btn sm" data-act="lote" data-f="lancado" ${SEL.size ? '' : 'disabled'}>✓ Marcar lançado</button><button class="btn sm" data-act="loteCobrar" ${SEL.size ? '' : 'disabled'}>✉ Cobrar selecionados</button></div>
   <div class="scroll"><table class="t"><thead><tr><th><input type="checkbox" id="selAll" aria-label="Selecionar todos"></th><th>Situação</th><th>Fornecedor</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Lançado</th><th>NF / doc</th><th>Valor líquido</th><th>PDF</th><th></th></tr></thead><tbody>
-  ${rows.map(({ l, c, s }) => `<tr data-id="${l.id}"><td><input type="checkbox" class="sel" ${SEL.has(l.id) ? 'checked' : ''} aria-label="Selecionar"></td><td>${pill(s)}</td>
+  ${rows.map(({ l, c, s }) => `<tr data-id="${l.id}"><td><input type="checkbox" class="sel" ${SEL.has(l.id) ? 'checked' : ''} aria-label="Selecionar"></td><td>${pill(s, s.k === 'sem' ? `title="${esc(l.semCobranca)}"` : '')}${s.k === 'sem' && l.semCobranca !== 'Sem cobrança no mês' ? `<div class="sub">${esc(l.semCobranca)}</div>` : ''}${s.conf ? `<div class="sub"><button class="btn sm" data-act="confirma" data-id="${l.id}" title="O valor do PDF ficou neste contrato mesmo? Confirmar fixa a ligação.">✓ Confirmar</button></div>` : ''}</td>
    <td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
    <td>${esc(c.cc)}<div class="sub">${esc(c.servico)}</div></td><td>${esc(c.resp)}</td>
    <td class="num">${diaBR(l.dtProg)}</td><td class="num">${diaBR(l.dtVenc)}${l.dtVenc.slice(0, 7) !== l.comp ? '<div class="sub">mês seg.</div>' : ''}</td>
@@ -1009,7 +1035,7 @@ function vLanc() {
    <td><input class="in sm w-nf" data-f="nf" value="${esc(l.nf)}" aria-label="NF"></td>
    <td><input class="in sm w-v" data-f="valor" value="${l.valor === '' || l.valor == null ? '' : esc(String(l.valor).replace('.', ','))}" inputmode="decimal" aria-label="Valor"></td>
    <td>${(() => { const dv = C.conferirPDF(l, ci[l.contrato], CCS); return dv.length ? `<span class="chip" style="background:var(--warn-s);color:var(--warn)" title="${esc(dv.join('\n'))}">⚠ ${dv.length}</span> ` : ''; })()}${l.arquivo ? `${l.arqUrl ? `<a href="${/^https?:/i.test(l.arqUrl) ? esc(l.arqUrl) : '#'}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
-   <td>${s.k !== 'conc' && s.k !== 'hist' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
+   <td style="white-space:nowrap">${s.k !== 'conc' && s.k !== 'hist' && s.k !== 'sem' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button> <button class="btn ghost sm" data-act="semCob" data-id="${l.id}" title="Mês sem cobrança (desconto, carência, contrato suspenso)">∅</button>` : ''}${s.k === 'sem' ? `<button class="btn ghost sm" data-act="semCobDesf" data-id="${l.id}" title="Voltar a cobrar este mês">↺</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
   </tbody></table></div></section>`;
 }
 
@@ -1069,7 +1095,7 @@ async function consultarRegimes(ids) {
   const r = await act('salvarRegime', { itens }); modal('Consulta de enquadramento', `<p>${ok} CNPJ(s) consultado(s) pelo navegador${err1 ? ' · erros: ' + esc(err1) : ''}.</p>${r && r.mudancas && r.mudancas.length ? '<p><b>Enquadramento alterado:</b></p><ul class="steps">' + r.mudancas.map(m => `<li>${esc(m)}</li>`).join('') + '</ul>' : ''}`); return r;
 }
 function formContrato(c) {
-  c = c || { id: '', fornecedor: '', canal: 'email', doc: '', ident: '', cc: '', servico: '', forma: 'BOLETO', vigencia: '', resp: '', diaProg: '', diaVenc: '', valorRef: '', ativo: 'S', obs: '' };
+  c = c || { id: '', fornecedor: '', canal: 'email', doc: '', ident: '', cc: '', servico: '', forma: 'BOLETO', vigencia: '', resp: '', diaProg: '', diaVenc: '', valorRef: '', ativo: 'S', obs: '', encerramento: '' };
   const ccs = uniq(DB.contratos.map(x => x.cc)), rs = uniq(DB.responsaveis.map(r => r.nome).concat(DB.contratos.map(x => x.resp)));
   modal(c.id ? 'Editar contrato ' + c.id : 'Novo contrato', `<form id="fC" class="form">
    <input type="hidden" name="id" value="${esc(c.id)}">
@@ -1086,6 +1112,7 @@ function formContrato(c) {
    <label>Dia vencimento<input class="in" name="diaVenc" type="number" min="1" max="31" required value="${esc(c.diaVenc)}"></label>
    <label>Vigência até<input class="in" name="vigencia" type="date" value="${c.vigencia >= '2900' ? '' : esc(c.vigencia)}"></label>
    <label style="flex-direction:row;align-items:center;gap:6px;text-transform:none"><input type="checkbox" name="indet" ${c.vigencia >= '2900' ? 'checked' : ''}> Prazo indeterminado</label>
+   <label>Encerramento do contrato (opcional)<input class="in" name="encerramento" type="date" value="${esc(c.encerramento || '')}" title="Depois desta data o contrato não gera mais lançamento nem alerta"></label>
    <label>Valor de referência<input class="in" name="valorRef" inputmode="decimal" value="${esc(String(c.valorRef || '').replace('.', ','))}"></label>
    <label style="flex-direction:row;align-items:center;gap:6px;text-transform:none"><input type="checkbox" name="ativo" ${c.ativo !== 'N' ? 'checked' : ''}> Contrato ativo (gera lançamento todo mês)</label>
    <label class="w2">Observação<input class="in" name="obs" value="${esc(c.obs)}"></label>
@@ -1165,7 +1192,7 @@ function vAnalise() {
 /* ---------- CONFIGURAÇÃO ---------- */
 function vConfig() {
   const m = modo(), rs = DB.responsaveis.length ? DB.responsaveis : [{ nome: '', email: '' }];
-  const campos = [['emailGestor', 'E-mail do gestor (cópia dos críticos + consolidado)', 'email'], ['pastaLocal', 'Pasta de documentos lançados na rede (S:)', 'text'], ['pastaId', 'ID da pasta do Drive (documentos lançados)', 'text'], ['diasVig', 'Alerta de vigência (dias)', 'number'], ['diasVenc', 'Alerta de vencimento (dias)', 'number'], ['tolDoc', 'Tolerância p/ lançar após programação (dias)', 'number'], ['varPct', 'Variação de valor que gera alerta (%)', 'number'], ['horaEnvio', 'Hora do envio diário', 'number'], ['marcosVig', 'Dias de aviso de vigência (além de toda segunda)', 'text'], ['diasPasta', 'Ler PDFs dos últimos (dias)', 'number'], ['autoScore', 'Score mínimo p/ vínculo automático', 'number'], ['inicio', 'Início do controle (competência; vazio = mês importado)', 'month']];
+  const campos = [['emailGestor', 'E-mail do gestor (cópia dos críticos + consolidado)', 'email'], ['pastaLocal', 'Pasta de documentos lançados na rede (S:)', 'text'], ['pastaId', 'ID da pasta do Drive (documentos lançados)', 'text'], ['diasVig', 'Alerta de vigência (dias)', 'number'], ['diasVenc', 'Alerta de vencimento (dias)', 'number'], ['tolDoc', 'Tolerância p/ lançar após programação (dias)', 'number'], ['varPct', 'Variação de valor que gera alerta (%)', 'number'], ['horaEnvio', 'Hora do envio diário', 'number'], ['marcosVig', 'Dias de aviso de vigência (além de toda segunda)', 'text'], ['diasPasta', 'Ler PDFs dos últimos (dias)', 'number'], ['diasSemLeitura', 'Avisar se a pasta do SOLUS ficar sem leitura (dias)', 'number'], ['autoScore', 'Score mínimo p/ vínculo automático', 'number'], ['inicio', 'Início do controle (competência; vazio = mês importado)', 'month']];
   return `<div class="grid2"><div style="display:flex;flex-direction:column;gap:14px">
   <section class="card"><h3>Responsáveis e e-mails</h3><div class="bd"><form id="fR"><div class="scroll"><table class="t"><thead><tr><th>Nome (igual à coluna Responsável)</th><th>E-mail</th><th></th></tr></thead><tbody id="rBody">${rs.map(r => linhaResp(r)).join('')}</tbody></table></div><div class="row" style="margin-top:8px"><button class="btn sm" type="button" data-act="addR">+ Responsável</button><button class="btn pri sm" type="submit">Salvar responsáveis</button></div></form></div></section>
   <section class="card"><h3>Parâmetros de alerta</h3><div class="bd"><form id="fP" class="form">${campos.map(([k, l, t]) => `<label${k === 'emailGestor' || k === 'pastaId' || k === 'pastaLocal' ? ' class="w2"' : ''}>${l}<input class="in" name="${k}" type="${t}" value="${esc(CFG[k])}"></label>`).join('')}<div class="row" style="grid-column:1/-1"><button class="btn pri" type="submit">Salvar parâmetros</button></div></form></div></section>
@@ -1274,6 +1301,13 @@ function pedirChave() {
 function sairChave() { CONEX.token = ''; LS.set('cr_conexao', CONEX); location.reload(); }
 
 /* ---------- modal e e-mails ---------- */
+function semCobranca(id) {
+  const l = DB.lancamentos.find(x => x.id === id), c = CI()[l.contrato] || {};
+  modal('Mês sem cobrança', `<p><b>${esc(c.fornecedor)}</b> · ${esc(c.cc)} · ${C.fmtComp(l.comp)}</p><p class="hint">Use quando o fornecedor não cobra neste mês (desconto de 100%, carência, contrato suspenso). O lançamento deixa de gerar alerta e de contar como pendente. Se o PDF aparecer depois, a leitura da pasta liga o PDF e desfaz esta marcação.</p>
+   <form id="fSem" class="form"><label class="w2">Motivo<input class="in" name="motivo" list="dlMot" placeholder="Ex.: desconto de 100% no mês" required><datalist id="dlMot">${['Desconto de 100% no mês', 'Carência', 'Contrato suspenso', 'Sem consumo no mês', 'Cobrança no mês seguinte'].map(x => `<option value="${x}">`).join('')}</datalist></label>
+   <div class="row w2" style="grid-column:1/-1"><button class="btn pri" type="submit">Marcar sem cobrança</button></div></form>`);
+  $('#fSem').addEventListener('submit', async e => { e.preventDefault(); const m = new FormData(e.target).get('motivo').trim() || 'Sem cobrança no mês'; fecharModal(); await act('atualizarLancamentos', { itens: [{ id, campos: { semCobranca: m } }] }); });
+}
 function modal(t, h) { $('#mT').textContent = t; $('#mC').innerHTML = h; $('#modal').hidden = false; }
 function fecharModal() { $('#modal').hidden = true; }
 function mostrarEmails(ms, enviados) {
@@ -1298,6 +1332,9 @@ document.addEventListener('click', async e => {
   else if (a === 'marca') upd(id, { [b.dataset.f]: 'S' });
   else if (a === 'cobrar') { const r = await act('cobrar', { id }, { noRender: true }); if (r && r.ok && modo() === 'local') mostrarEmails(r.emails); }
   else if (a === 'desv') act('desvincular', { id });
+  else if (a === 'confirma') act('confirmarLigacao', { ids: [id] });
+  else if (a === 'semCob') semCobranca(id);
+  else if (a === 'semCobDesf') upd(id, { semCobranca: '' });
   else if (a === 'porque') porque(id);
   else if (a === 'diag') baixarDiagnostico();
   else if (a === 'tema') { const n = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.documentElement.setAttribute('data-theme', n); try { localStorage.setItem('cr_tema', n); } catch (e) {} }
