@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
 <title>Contratos Recorrentes</title>
 <meta name="color-scheme" content="dark light">
 <script>(function(){var t='dark';try{t=localStorage.getItem('cr_tema')||'dark'}catch(e){}document.documentElement.setAttribute('data-theme',t)})();</script>
@@ -67,6 +68,8 @@ table.t{border-collapse:collapse;width:100%;font-size:12.5px}
 .p-atras,.p-venc,.p-vencido{background:var(--crit-s);color:var(--crit)}
 .p-lanc{background:var(--info-s);color:var(--info)}
 .p-conc,.p-vig,.p-auto{background:var(--ok-s);color:var(--ok)}
+.mx th,.mx td{white-space:nowrap}.mx td:first-child,.mx th:first-child{position:sticky;left:0;background:var(--panel);z-index:1;white-space:normal;min-width:200px;max-width:260px}.mx tfoot th{background:var(--panel)}
+.aviso{border:1px solid var(--warn);border-radius:8px;padding:9px 12px;background:var(--warn-s,transparent);font-size:12.5px}
 .p-sem,.p-enc{background:var(--neu-s);color:var(--mute)}
 .p-sugerido,.p-ambiguo{background:var(--info-s);color:var(--info)}
 .p-semvinculo,.p-semLancamento,.p-outroCC{background:var(--crit-s);color:var(--crit)}
@@ -126,6 +129,26 @@ table.t{border-collapse:collapse;width:100%;font-size:12.5px}
 .steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px;max-width:80ch}
 code{font:12px var(--f-m);background:var(--panel2);border:1px solid var(--line);border-radius:3px;padding:0 4px}
 .empty{padding:22px 12px;text-align:center;color:var(--mute)}
+
+.cfb{border:0;background:transparent;color:var(--mute);cursor:pointer;font-size:11px;padding:0 3px;margin-left:2px;border-radius:3px}.cfb:hover,.cfb.on{color:var(--acc);background:var(--acc-soft)}
+th .stl{cursor:pointer;user-select:none}th .stl:hover{color:var(--acc)}
+.cfp{position:fixed;z-index:90;width:290px;background:var(--panel);border:1px solid var(--line);border-radius:8px;box-shadow:0 12px 32px rgba(0,0,0,.3);font:12px var(--f-c);color:var(--ink)}
+.cfp .cfh{display:flex;flex-direction:column;border-bottom:1px solid var(--line)}.cfp button{font:inherit;color:inherit;background:transparent;border:0;text-align:left;padding:6px 10px;cursor:pointer}.cfp button:hover{background:var(--acc-soft)}
+.cfp input[type=search]{margin:8px;width:calc(100% - 16px);padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--bg);color:inherit}
+.cfp .cfa{display:block;padding:2px 10px 4px;border-bottom:1px solid var(--line)}.cfp .cfl{max-height:230px;overflow:auto;padding:4px 10px}.cfp .cfl label{display:flex;gap:6px;padding:2px 0;align-items:center}.cfp .cfl .hint,.cfp .cfa .hint{margin-left:auto;color:var(--mute)}
+.cfp .cff{display:flex;gap:4px;padding:6px;border-top:1px solid var(--line)}.cfp .cff .pri{background:var(--acc);color:#fff;border-radius:5px;text-align:center}
+.gfi{display:flex;gap:8px;align-items:center;padding:6px 14px;font-size:12px;color:var(--mute);border-bottom:1px solid var(--line)}
+.fn[data-hist],.dr{cursor:pointer}.fn[data-hist]:hover{color:var(--acc);text-decoration:underline}td.dr:hover{background:var(--acc-soft);outline:1px solid var(--acc)}
+.dgrid{max-height:62vh;overflow:auto}#modal .box.wide{width:min(1180px,100%)}
+
+@keyframes crFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes crGx{from{transform:scaleX(0)}to{transform:scaleX(1)}}@keyframes crGy{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+.kpi,.card{animation:crFade .45s cubic-bezier(.2,.8,.2,1) both}.kpis .kpi:nth-child(2){animation-delay:.04s}.kpis .kpi:nth-child(3){animation-delay:.08s}.kpis .kpi:nth-child(4){animation-delay:.12s}.kpis .kpi:nth-child(5){animation-delay:.16s}.kpis .kpi:nth-child(6){animation-delay:.2s}
+.kpi{transition:transform .2s,box-shadow .2s}.kpi:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.spark path:first-child,svg.bars rect{transform-box:fill-box;transform-origin:bottom;animation:crGy .7s cubic-bezier(.2,.8,.2,1) both}
+.pill{transition:background .3s,color .3s}tr{transition:background .15s}
+.noanim .kpi,.noanim .card{animation:none}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 #modal{position:fixed;inset:0;background:rgba(10,20,17,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px 24px;overflow-y:auto}
 #modal .box{background:var(--panel);border:1px solid var(--line);border-radius:10px;width:min(900px,100%);box-shadow:0 20px 50px rgba(0,0,0,.25)}
 #modal .hd{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);font:600 15px var(--f-c)}
@@ -141,6 +164,33 @@ code{font:12px var(--f-m);background:var(--panel2);border:1px solid var(--line);
 @media (prefers-reduced-motion:reduce){.busy{animation:none;width:100%}.tg,.tg::after{transition:none}}
 .spark{display:block}
 .warnbox{background:var(--warn-s);color:var(--warn);border-radius:6px;padding:8px 10px;font-size:12px}
+
+/* ---- tema Unimed (tons do Estudo de Impacto Executivo) ---- */
+:root{--uv-g:#00995D;--uv-gd:#0A5F55;--uv-gl:#E6F4EE;--uv-o:#F47920;--uv-od:#C2410C;--uv-ol:#FEF1E6;--uv-b:#2F6FD0;--ease:cubic-bezier(.2,.8,.2,1)}
+:root,:root[data-theme="light"]{--bg:#F4F7F5;--panel:#FFFFFF;--panel2:#F7FAF8;--ink:#14211B;--mute:#5F6E67;--line:#E3E8E5;--acc:#00995D;--acc-ink:#FFFFFF;--acc-soft:#E6F4EE;--ok:#0A7A4B;--ok-s:#E6F4EE;--warn:#C2410C;--warn-s:#FEF1E6;--crit:#B42318;--crit-s:#FDE8E5;--info:#2F6FD0;--info-s:#E5EEFB;--neu-s:#EEF1EF;--shadow:0 1px 2px rgba(16,40,28,.06),0 8px 24px rgba(16,40,28,.06)}
+:root[data-theme="dark"]{--bg:#0B1512;--panel:#12201B;--panel2:#16261F;--ink:#E4EEE9;--mute:#93A89F;--line:#25362F;--acc:#00B873;--acc-ink:#03180F;--acc-soft:#103A2C;--ok:#4FD39A;--ok-s:#12331F;--warn:#F59A55;--warn-s:#3A2210;--crit:#F2705F;--crit-s:#3A1815;--info:#6FA2EE;--info-s:#142A4A;--neu-s:#1B2A24;--shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28)}
+.top{background:linear-gradient(120deg,#0A5F55 0%,#00805A 50%,#00A868 100%);border-bottom:0;color:#fff;position:sticky;overflow:hidden;box-shadow:0 4px 18px rgba(10,95,85,.28)}
+.top::after{content:"";position:absolute;right:-120px;top:-180px;width:460px;height:460px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.14),rgba(255,255,255,0) 70%);pointer-events:none}
+.top>*{position:relative;z-index:1}
+.top .brand{border-left-color:rgba(255,255,255,.4)}.top .brand b,.top .brand span{color:#fff}.top .brand span{opacity:.85}
+.top .logo{border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.15)}
+.top .compnav{background:rgba(255,255,255,.12);border-color:rgba(255,255,255,.38)}.top .compnav button,.top .compnav strong{color:#fff}.top .compnav button:hover{background:rgba(255,255,255,.2)}
+.top .modo{background:rgba(255,255,255,.18);color:#fff}.top .modo.on{background:#fff;color:#0A5F55}
+.top .btn{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.42);color:#fff}.top .btn:hover{background:rgba(255,255,255,.26);border-color:#fff}
+.top .btn.pri{background:#fff;color:#0A5F55;border-color:#fff}
+.top .hint,.top #verLbl{color:rgba(255,255,255,.8)}
+.top .tab{color:rgba(255,255,255,.78)}.top .tab:hover{color:#fff}.top .tab[aria-selected="true"]{color:#fff;border-color:var(--uv-o)}
+.top .tab .ct{background:var(--uv-o);color:#fff}
+.btn.pri{background:var(--acc);border-color:var(--acc)}.btn{border-radius:10px;transition:transform .15s var(--ease),box-shadow .15s,border-color .15s}.btn:hover:not(:disabled){transform:translateY(-1px)}
+.card{border-radius:16px;border-color:transparent;box-shadow:var(--shadow)}.card>h3{border-bottom-color:var(--line)}
+.kpi{border-radius:14px;border-top:1px solid var(--line);border-left:4px solid var(--kc,var(--acc));box-shadow:var(--shadow);padding:12px 14px}
+.kpi.crit{--kc:var(--crit);border-top-color:var(--line)}.kpi.warn{--kc:var(--uv-o);border-top-color:var(--line)}.kpi.ok{--kc:var(--acc);border-top-color:var(--line)}.kpi.info{--kc:var(--uv-b);border-top-color:var(--line)}
+.kpi.warn b{color:var(--warn)}
+.kpi b{font-weight:750;letter-spacing:-.02em}
+.t th{background:var(--panel2)}
+.pill.p-conc,.pill.p-ok{background:var(--ok-s);color:var(--ok)}
+.kpi:hover{border-color:var(--line);border-left-color:var(--kc,var(--acc))}
+.fila .al{border-radius:12px}
 </style>
 
 </head><body>
@@ -296,7 +346,7 @@ var CORE = (function () {
     return { id: lancId(c.id, comp), contrato: c.id, comp: comp, dtProg: dtProg, dtVenc: dtVenc, lancado: '', dtLanc: '', pago: '', dtPag: '', nf: '', valor: '', arquivo: '', arqUrl: '', arqData: '', conciliado: '', obs: '', atualizado: '' };
   }
   function gerarCompetencia(db, comp) {
-    var ex = {}, n = 0; db.lancamentos.forEach(function (l) { ex[l.id] = 1; });
+    var ex = {}, n = 0; db.lancamentos.forEach(function (l) { ex[l.id] = 1; }); listaCfg(db, 'lancExcluidos').forEach(function (k) { ex[k] = 1; });
     db.contratos.forEach(function (c) { if (c.ativo === 'N' || c.encerramento && comp > String(c.encerramento).slice(0, 7)) return; var id = lancId(c.id, comp); if (!ex[id]) { db.lancamentos.push(novoLanc(c, comp)); n++; } });
     return n;
   }
@@ -609,7 +659,7 @@ var CORE = (function () {
   }
 
   /* ---- Alertas e e-mails ---- */
-  function alertas(db, hoje, cfg) {
+  function alertas(db, hoje, cfg, refVig) { // refVig: data-base da vigência (mês consultado); padrão = hoje
     var ci = idx(db), out = [], c0 = compSoma(hoje.slice(0, 7), -3), c1 = compSoma(hoje.slice(0, 7), 1);
     db.lancamentos.forEach(function (l) {
       if (l.comp < c0 || l.comp > c1) return;
@@ -622,7 +672,7 @@ var CORE = (function () {
       var base = { resp: c.resp, contrato: c.id, forn: c.fornecedor, cc: c.cc, serv: c.servico, canal: c.canal, ident: c.ident };
       if (c.situacaoCad && c.situacaoCad !== 'ATIVA') out.push(Object.assign({ n: 3, k: 'cad', tipo: 'CNPJ não ativo', st: 'Situação ' + c.situacaoCad, data: c.regimeEm }, base));
       if (c.regimeMudou && dias(c.regimeMudou, hoje) <= 30) out.push(Object.assign({ n: 2, k: 'reg', tipo: 'Enquadramento alterado', st: c.regimeAnt + ' → ' + c.regime, data: c.regimeMudou }, base));
-      var s = statusVig(c, hoje, cfg); if (s.n < 2) return;
+      var s = statusVig(c, refVig || hoje, cfg); if (s.n < 2) return;
       out.push({ n: s.n, k: 'vig', tipo: s.k === 'vencido' ? 'Contrato vencido' : 'Enviar para Qualificação', st: s.t, dvig: s.d, resp: c.resp, contrato: c.id, forn: c.fornecedor, cc: c.cc, serv: c.servico, canal: c.canal, ident: c.ident, data: c.vigencia });
     });
     out.sort(function (a, b) { return b.n - a.n || (a.data < b.data ? -1 : 1); });
@@ -769,6 +819,30 @@ var CORE = (function () {
         }
         break;
       }
+      case 'historico': { // carga histórica: gera as competências de p.de a p.ate; com p.limpar remove as que ficaram sem PDF
+        var de = String(p.de || ''), ate = String(p.ate || ''), g = 0, rm = 0;
+        if (!/^\d{4}-\d{2}$/.test(de) || !/^\d{4}-\d{2}$/.test(ate) || de > ate) throw new Error('Período inválido.');
+        if (!p.limpar) { for (var cp = de; cp <= ate; cp = compSoma(cp, 1)) g += gerarCompetencia(db, cp); if (g) dirty.LANCAMENTOS = 1; r.msg = g + ' lançamento(s) criados de ' + fmtComp(de) + ' a ' + fmtComp(ate); r.criados = g; }
+        else { var n0 = db.lancamentos.length; db.lancamentos = db.lancamentos.filter(function (l) { return !(l.comp >= de && l.comp <= ate) || l.arquivo || l.lancado === 'S' || l.semCobranca || l.conciliado === 'M' || l.conciliado === 'H' || l.pago === 'S' || l.obs; }); rm = n0 - db.lancamentos.length; if (rm) dirty.LANCAMENTOS = 1; r.removidos = rm; r.msg = rm + ' competência(s) sem PDF removida(s) do histórico'; }
+        log('historico', de + ' a ' + ate + (p.limpar ? ' · limpeza ' + rm : ' · criados ' + g)); dirty.LOG = 1; break;
+      }
+      case 'restaurarBanco': { // restaura as tabelas a partir de um backup JSON
+        var b = p.db; if (!b || !b.contratos || !b.lancamentos) throw new Error('Arquivo de backup inválido.');
+        ['contratos', 'lancamentos', 'responsaveis', 'config', 'log'].forEach(function (k) { db[k] = (b[k] || []).slice(); });
+        dirty.CONTRATOS = dirty.LANCAMENTOS = dirty.RESPONSAVEIS = dirty.CONFIG = dirty.LOG = 1; log('restaurarBanco', db.contratos.length + ' contratos · ' + db.lancamentos.length + ' lançamentos'); r.msg = 'Banco restaurado: ' + db.contratos.length + ' contratos e ' + db.lancamentos.length + ' lançamentos'; break;
+      }
+      case 'incluirLancamento': { // lançamento avulso (ou competência que faltou) criado pelo HTML
+        var ca = idx(db)[p.contrato]; if (!ca) throw new Error('Contrato não encontrado.'); var cp0 = String(p.comp || ''); if (!/^\d{4}-\d{2}$/.test(cp0)) throw new Error('Competência inválida.');
+        var idn = lancId(ca.id, cp0); if (db.lancamentos.some(function (l) { return l.id === idn; })) throw new Error('Já existe lançamento deste contrato em ' + fmtComp(cp0) + '.');
+        var nl = novoLanc(ca, cp0); if (p.dtVenc) nl.dtVenc = p.dtVenc; if (p.nf) nl.nf = String(p.nf); if (numBR(p.valor) != null) nl.valor = numBR(p.valor); if (p.obs) nl.obs = String(p.obs); nl.atualizado = hoje + (ctx.usuario ? ' ' + ctx.usuario : '');
+        db.lancamentos.push(nl); var le0 = listaCfg(db, 'lancExcluidos').filter(function (k) { return k !== idn; }); gravarCfg(db, 'lancExcluidos', le0); dirty.LANCAMENTOS = dirty.CONFIG = 1; log('incluirLancamento', idn); r.msg = 'Lançamento incluído: ' + ca.fornecedor + ' · ' + fmtComp(cp0); r.id = idn; break;
+      }
+      case 'excluirLancamento': { // exclui (não volta na geração automática da competência)
+        var ids = [].concat(p.ids || p.id), n1 = db.lancamentos.length, le = listaCfg(db, 'lancExcluidos');
+        ids.forEach(function (k) { if (le.indexOf(k) < 0) le.push(k); }); gravarCfg(db, 'lancExcluidos', le);
+        db.lancamentos = db.lancamentos.filter(function (l) { return ids.indexOf(l.id) < 0; }); var q1 = n1 - db.lancamentos.length;
+        dirty.LANCAMENTOS = dirty.CONFIG = 1; log('excluirLancamento', ids.join(', ').slice(0, 300)); r.msg = q1 + ' lançamento(s) excluído(s)'; break;
+      }
       case 'vincular': {
         var ok = 0; (p.vinculos || []).forEach(function (v) { if (aplicarVinculo(db, v.lancId, v.arq, v.p || parseArquivo(v.arq.nome, v.arq.caminho, listaCC(db), v.arq.data), hoje, p.aprender !== false)) { ok++; db.lancamentos.forEach(function (l) { if (l.id === v.lancId) l.conciliado = 'M'; }); } });
         dirty.LANCAMENTOS = dirty.CONTRATOS = 1; log('vincular', ok); r.msg = ok + ' documento(s) vinculado(s)'; break;
@@ -784,7 +858,7 @@ var CORE = (function () {
         r.mudancas = md2; r.msg = q0.msg + (md2.length ? ' · ' + md2.length + ' alteração(ões) de enquadramento' : ''); break;
       }
       case 'restaurarExcluido': { var exR2 = excluidosDe(db).filter(function (k) { return k !== p.chave; }); gravarExcluidos(db, exR2); dirty.CONFIG = 1; r.msg = 'Linha liberada: o contrato volta a ser cadastrado a partir da planilha'; break; }
-      case 'salvarConfig': { var exS = excluidosDe(db), rjS = listaCfg(db, 'rejeitados'), ulS = ultimaLeitura(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos' && k !== 'rejeitados' && k !== 'ultimaLeitura'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); gravarCfg(db, 'rejeitados', rjS); if (ulS) gravarCfg1(db, 'ultimaLeitura', ulS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
+      case 'salvarConfig': { var exS = excluidosDe(db), rjS = listaCfg(db, 'rejeitados'), leS = listaCfg(db, 'lancExcluidos'), ulS = ultimaLeitura(db); db.config = Object.keys(p.config).filter(function (k) { return k !== 'excluidos' && k !== 'rejeitados' && k !== 'ultimaLeitura' && k !== 'lancExcluidos'; }).map(function (k) { return { chave: k, valor: p.config[k] }; }); gravarExcluidos(db, exS); gravarCfg(db, 'rejeitados', rjS); gravarCfg(db, 'lancExcluidos', leS); if (ulS) gravarCfg1(db, 'ultimaLeitura', ulS); dirty.CONFIG = 1; r.msg = 'Parâmetros salvos'; break; }
       case 'salvarResponsaveis': { db.responsaveis = (p.lista || []).filter(function (x) { return x.nome; }); dirty.RESPONSAVEIS = 1; r.msg = 'Responsáveis salvos'; break; }
       case 'previaAlertas': { r.emails = montarEmails(db, hoje, cfg, !!p.forcar); break; }
       case 'enviarAlertas': {
@@ -892,7 +966,144 @@ var CORE = (function () {
     r.dirty = dirty; return r;
   }
 
-  return { VERSAO: '2026.11.14c', canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, avisoLeitura: avisoLeitura, ultimaLeitura: ultimaLeitura, aplicarEncerramentos: aplicarEncerramentos, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  /* ---- Análise: acompanhamento mensal, fechamento anual e métodos estatísticos ---- */
+  function vlr(l) { if (l.semCobranca && !l.arquivo) return 0; var v = numBR(l.valor); return v === 0 ? null : v; } /* valor 0 sem “sem cobrança” = valor ainda desconhecido */
+  function mediana(a) { if (!a.length) return null; var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+  function quantil(a, q) { var s = a.slice().sort(function (x, y) { return x - y; }), p = (s.length - 1) * q, i = Math.floor(p), f = p - i; return s[i] + (s[i + 1] !== undefined ? (s[i + 1] - s[i]) * f : 0); }
+  function dpA(vs) { var n = vs.length; if (n < 2) return 0; var m = media(vs); return Math.sqrt(vs.reduce(function (a, x) { return a + (x - m) * (x - m); }, 0) / (n - 1)); }
+  var T95 = [0, 12.71, 4.30, 3.18, 2.78, 2.57, 2.45, 2.36, 2.31, 2.26, 2.23];
+  function tcrit(df) { return df < 1 ? 12.71 : df <= 10 ? T95[df] : df <= 30 ? 2.1 : 1.96; }
+  function regLin(vs) { /* mínimos quadrados: y = a + b·x, x = 0..n-1 */
+    var n = vs.length; if (n < 3) return null;
+    var xm = (n - 1) / 2, ym = media(vs), sxx = 0, sxy = 0, syy = 0, i;
+    for (i = 0; i < n; i++) { sxx += (i - xm) * (i - xm); sxy += (i - xm) * (vs[i] - ym); syy += (vs[i] - ym) * (vs[i] - ym); }
+    var b = sxy / sxx, a = ym - b * xm, sse = 0; for (i = 0; i < n; i++) { var e = vs[i] - (a + b * i); sse += e * e; }
+    return { a: a, b: b, r2: syy ? 1 - sse / syy : 0, se: Math.sqrt(sse / (n - 2)), n: n, xm: xm, sxx: sxx };
+  }
+  function seriesPorContrato(db) { /* só valores > 0 (sem cobrança e vazios ficam fora das estatísticas) */
+    var por = {};
+    db.lancamentos.forEach(function (l) { var v = vlr(l); if (v == null || v <= 0) return; (por[l.contrato] = por[l.contrato] || []).push({ comp: l.comp, v: v }); });
+    Object.keys(por).forEach(function (k) { por[k].sort(function (a, b) { return a.comp < b.comp ? -1 : a.comp > b.comp ? 1 : 0; }); });
+    return por;
+  }
+  function estimativa(c, serie, comp) { /* mediana dos últimos 3 valores anteriores à competência; senão, valor de referência */
+    var vs = (serie || []).filter(function (x) { return !comp || x.comp < comp; }).slice(-3).map(function (x) { return x.v; });
+    return vs.length ? mediana(vs) : (numBR(c.valorRef) || 0);
+  }
+  function chaveGrupo(c, agrup) {
+    if (agrup === 'cc') return { k: norm(c.cc), l: c.cc || '—', s: '' };
+    if (agrup === 'fornecedor') { var nome = String(c.razao || c.fornecedor || '').replace(/\s*\(.*$/, '').trim(); return { k: dig(c.doc).slice(0, 8) || norm(nome), l: nome, s: '' }; }
+    return { k: c.id, l: c.fornecedor, s: c.cc };
+  }
+  function totComp(db, comp) { var t = 0, n = 0; db.lancamentos.forEach(function (l) { if (l.comp !== comp) return; var v = vlr(l); if (v != null) { t += v; n++; } }); return { total: t, n: n }; }
+
+  function analiseMes(db, comp, cfg, hoje) {
+    var cm = idx(db), ser = seriesPorContrato(db), prevC = compSoma(comp, -1), r = { comp: comp, linhas: [], porCC: {}, real: 0, pend: 0, nReal: 0, nPend: 0, nSem: 0 };
+    var prevMap = {}; db.lancamentos.forEach(function (l) { if (l.comp === prevC) { var v = vlr(l); if (v != null) prevMap[l.contrato] = (prevMap[l.contrato] || 0) + v; } });
+    db.lancamentos.forEach(function (l) {
+      if (l.comp !== comp) return; var c = cm[l.contrato]; if (!c) return;
+      var v = vlr(l), sem = !!(l.semCobranca && !l.arquivo), est = v == null ? estimativa(c, ser[c.id], comp) : null, prev = prevMap[c.id] != null ? prevMap[c.id] : null;
+      var ult3 = (ser[c.id] || []).filter(function (x) { return x.comp < comp; }).slice(-3).map(function (x) { return x.v; }), m3 = ult3.length ? media(ult3) : null, ref = v != null ? v : est;
+      var row = { l: l, c: c, st: statusLanc(l, hoje, cfg), real: v, est: est, prev: prev, m3: m3, sem: sem, d: (v != null && prev) ? v - prev : null, dp: (v != null && prev) ? (v - prev) / prev * 100 : null, dm3: (v != null && m3) ? (v - m3) / m3 * 100 : null };
+      row.fora = row.dm3 != null && Math.abs(row.dm3) > cfg.varPct;
+      r.linhas.push(row);
+      var cc = c.cc || '—', g = r.porCC[cc] = r.porCC[cc] || { real: 0, pend: 0, prev: 0 };
+      if (sem) r.nSem++; else if (v != null) { r.real += v; g.real += v; r.nReal++; } else { r.pend += est; g.pend += est; r.nPend++; }
+    });
+    Object.keys(prevMap).forEach(function (id) { var c = cm[id], cc = c ? c.cc || '—' : '—'; if (r.porCC[cc]) r.porCC[cc].prev += prevMap[id]; });
+    r.prev = totComp(db, prevC).total; r.ano = totComp(db, compSoma(comp, -12)).total; r.prevar = r.prev ? (r.real - r.prev) / r.prev * 100 : null;
+    r.previsto = r.real + r.pend; r.prevstat = r.prev ? (r.previsto - r.prev) / r.prev * 100 : null;
+    r.serie = []; for (var i = 11; i >= 0; i--) { var cc2 = compSoma(comp, -i), t = totComp(db, cc2); r.serie.push({ comp: cc2, total: t.total, n: t.n }); }
+    r.mm3 = []; r.serie.forEach(function (s, i) { var j = r.serie.slice(Math.max(0, i - 2), i + 1).filter(function (x) { return x.n; }); r.mm3.push(j.length === 3 ? media(j.map(function (x) { return x.total; })) : null); });
+    r.linhas.sort(function (a, b) { return ((b.real != null ? b.real : b.est) || 0) - ((a.real != null ? a.real : a.est) || 0); });
+    return r;
+  }
+
+  function analiseAno(db, ano, cfg, hoje, agrup) {
+    var cm = idx(db), ser = seriesPorContrato(db), mesAtual = hoje.slice(0, 7), comps = [], i, g = {}, anos = {};
+    for (i = 1; i <= 12; i++) comps.push(ano + '-' + (i < 10 ? '0' : '') + i);
+    db.lancamentos.forEach(function (l) { anos[l.comp.slice(0, 4)] = 1; });
+    anos[hoje.slice(0, 4)] = 1; anos[ano] = 1;
+    var tem = {}; /* contrato+comp com lançamento */
+    db.lancamentos.forEach(function (l) {
+      var c = cm[l.contrato]; if (!c) return; var k = chaveGrupo(c, agrup), ai = l.comp.slice(0, 4);
+      var o = g[k.k] = g[k.k] || { key: k.k, label: k.l, sub: k.s, cells: comps.map(function () { return { real: null, est: 0 }; }), ant: 0, n: 0 };
+      tem[l.contrato + '|' + l.comp] = 1;
+      var v = vlr(l); if (v == null) return;
+      if (ai === ano) { var m = +l.comp.slice(5) - 1; o.cells[m].real = (o.cells[m].real || 0) + v; }
+      else if (ai === String(+ano - 1)) o.ant += v;
+    });
+    db.contratos.forEach(function (c) { /* projeção: contratos ativos nos meses ainda sem valor (mês atual em diante) */
+      if (c.ativo === 'N') return; var k = chaveGrupo(c, agrup), o = g[k.k]; if (!o) o = g[k.k] = { key: k.k, label: k.l, sub: k.s, cells: comps.map(function () { return { real: null, est: 0 }; }), ant: 0, n: 0 };
+      comps.forEach(function (cp, m) {
+        if (cp < mesAtual || (c.encerramento && cp > String(c.encerramento).slice(0, 7))) return;
+        var l = db.lancamentos.filter(function (x) { return x.contrato === c.id && x.comp === cp; })[0], v = l ? vlr(l) : null;
+        if (v == null) o.cells[m].est += estimativa(c, ser[c.id], cp);
+      });
+    });
+    var linhas = Object.keys(g).map(function (k) { return g[k]; });
+    linhas.forEach(function (o) {
+      o.total = 0; o.proj = 0; o.meses = 0;
+      o.cells.forEach(function (x) { if (x.real != null) { o.total += x.real; o.meses++; } o.proj += (x.real || 0) + (x.est || 0); });
+    });
+    linhas = linhas.filter(function (o) { return o.total || o.proj || o.ant; });
+    linhas.sort(function (a, b) { return (b.proj || 0) - (a.proj || 0); });
+    var tot = comps.map(function () { return { real: 0, est: 0 }; }), t = { real: 0, proj: 0, ant: 0 };
+    linhas.forEach(function (o) { o.cells.forEach(function (x, m) { tot[m].real += x.real || 0; tot[m].est += x.est || 0; }); t.real += o.total; t.proj += o.proj; t.ant += o.ant; });
+    var fech = comps.map(function (cp) {
+      var ls = db.lancamentos.filter(function (l) { return l.comp === cp && l.conciliado !== 'H' || (l.comp === cp && l.arquivo); });
+      var ab = ls.filter(function (l) { return !(l.lancado === 'S' || (l.semCobranca && !l.arquivo)); }).length;
+      return { comp: cp, n: ls.length, abertos: ab, fechado: ls.length > 0 && ab === 0 && cp < mesAtual || (ls.length > 0 && ab === 0 && cp === mesAtual) };
+    });
+    return { ano: ano, anos: Object.keys(anos).sort(), comps: comps, linhas: linhas, tot: tot, t: t, fech: fech, agrup: agrup, varAnt: t.ant ? (t.proj - t.ant) / t.ant * 100 : null };
+  }
+
+  function analiseEstat(db, cfg, hoje) {
+    var cm = idx(db), ser = seriesPorContrato(db), linhas = [], pc = { fixo: 0, estavel: 0, variavel: 0, total: 0 }, res = { outliers: 0, alta: 0, queda: 0, reajuste: 0, aptos: 0 };
+    Object.keys(ser).forEach(function (id) {
+      var c = cm[id]; if (!c || (c.ativo === 'N' && !ser[id].length)) return;
+      var s = ser[id], vs = s.map(function (x) { return x.v; }), n = vs.length, m = media(vs), md = mediana(vs), dp = dpA(vs), cv = m ? dp / m * 100 : 0;
+      var o = { c: c, serie: s, n: n, media: m, mediana: md, dp: dp, cv: cv, min: Math.min.apply(null, vs), max: Math.max.apply(null, vs), ult: vs[n - 1] };
+      o.classe = n < 3 ? 'amostra' : cv < 5 ? 'fixo' : cv < 15 ? 'estavel' : 'variavel';
+      var prior = vs.slice(0, -1);
+      if (n >= 5) {
+        var mp = media(prior), dpp = dpA(prior); o.z = dpp > 0 ? (o.ult - mp) / dpp : (o.ult !== mp ? Infinity : 0);
+        var q1 = quantil(prior, .25), q3 = quantil(prior, .75), iq = q3 - q1; o.iqr = [q1 - 1.5 * iq, q3 + 1.5 * iq];
+        o.outZ = Math.abs(o.z) > 2; o.outIQR = iq > 0 ? (o.ult < o.iqr[0] || o.ult > o.iqr[1]) : o.ult !== q1;
+        o.outlier = c.ativo !== 'N' && (o.outZ || o.outIQR); if (o.outlier) res.outliers++;
+      }
+      if (n >= 3) {
+        res.aptos++;
+        var med = mediana(prior), salto = med ? (o.ult - med) / med * 100 : 0; o.salto = salto;
+        var mpr = media(prior), cvp = mpr ? dpA(prior) / mpr * 100 : 99; /* valor vinha fixo (CV < 3%) e mudou: reajuste provável */
+        o.reajuste = c.ativo !== 'N' && prior.length >= 2 && cvp < 3 && Math.abs(salto) >= 2;
+        if (o.reajuste) res.reajuste++;
+        var rg = regLin(vs); o.reg = rg;
+        if (rg) {
+          o.pctMes = m ? rg.b / m * 100 : 0;
+          var sig = rg.r2 >= 0.5 && Math.abs(o.pctMes) >= 1;
+          o.tend = n < 6 ? 'curta' : sig ? (rg.b > 0 ? 'alta' : 'queda') : 'estavel'; if (o.tend === 'alta') res.alta++; if (o.tend === 'queda') res.queda++;
+          if (n >= 6 && rg.r2 >= 0.6) {
+            var p = rg.a + rg.b * n, sp = rg.se * Math.sqrt(1 + 1 / n + (n - rg.xm) * (n - rg.xm) / rg.sxx), h = tcrit(n - 2) * sp;
+            o.prox = { v: Math.max(0, p), lo: Math.max(0, p - h), hi: p + h, metodo: 'Regressão linear' };
+          }
+        }
+        if (!o.prox) { var u3 = vs.slice(-3), mu = media(u3), hh = tcrit(n - 1) * dp * Math.sqrt(1 + 1 / n); o.prox = { v: mu, lo: Math.max(0, mu - hh), hi: mu + hh, metodo: 'Média dos últimos 3' }; }
+        pc.total += m; pc[o.classe === 'amostra' ? 'variavel' : o.classe] += m;
+      }
+      linhas.push(o);
+    });
+    linhas.sort(function (a, b) { return ((b.outlier ? 1 : 0) - (a.outlier ? 1 : 0)) || ((b.reajuste ? 1 : 0) - (a.reajuste ? 1 : 0)) || b.media - a.media; });
+    /* Curva ABC (Pareto) sobre o gasto dos últimos 12 meses por fornecedor */
+    var c0 = compSoma(hoje.slice(0, 7), -11), f = {}, totAbc = 0;
+    db.lancamentos.forEach(function (l) { if (l.comp < c0) return; var c = cm[l.contrato], v = vlr(l); if (!c || v == null || v <= 0) return; var k = chaveGrupo(c, 'fornecedor'); f[k.k] = f[k.k] || { label: k.l, v: 0 }; f[k.k].v += v; totAbc += v; });
+    var abc = Object.keys(f).map(function (k) { return f[k]; }).sort(function (a, b) { return b.v - a.v; }), ac = 0;
+    abc.forEach(function (x) { ac += x.v; x.pct = totAbc ? x.v / totAbc * 100 : 0; x.acum = totAbc ? ac / totAbc * 100 : 0; x.cls = (x.acum - x.pct) < 80 ? 'A' : (x.acum - x.pct) < 95 ? 'B' : 'C'; });
+    var meses = {}; db.lancamentos.forEach(function (l) { if (vlr(l) > 0) meses[l.comp] = 1; });
+    return { linhas: linhas, res: res, abc: abc, totAbc: totAbc, janelaAbc: c0, pc: pc, nMeses: Object.keys(meses).length };
+  }
+
+  return { VERSAO: '2026.11.20b', chaveGrupo: chaveGrupo, statusLancX: statusLanc, analiseMes: analiseMes, analiseAno: analiseAno, analiseEstat: analiseEstat, canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, avisoLeitura: avisoLeitura, ultimaLeitura: ultimaLeitura, aplicarEncerramentos: aplicarEncerramentos, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -904,7 +1115,7 @@ const hj = new Date(), HOJE = C.iso(hj.getFullYear(), hj.getMonth() + 1, hj.getD
 let DB = { contratos: [], lancamentos: [], responsaveis: [], config: [], log: [] }, CFG = C.cfgDe(DB), COMP = HOJE.slice(0, 7);
 let ABA = (location.hash || '').replace('#', '') || LS.get('cr_aba') || 'painel';
 let F = { q: '', resp: '', cc: '', st: '', dia: '' }, FC = { q: '', cc: '', vig: '', ativo: 'S' }, FA = '', CONC = null, SEL = new Set();
-const CONEX_PADRAO = { api: "", token: "0e1de75f326fd1c7a4b3392715d7ca88" };
+const CONEX_PADRAO = { api: "", token: "" };
 const _cx = LS.get('cr_conexao') || {};
 const CONEX = { api: _cx.api || CONEX_PADRAO.api, token: _cx.token || CONEX_PADRAO.token };
 
@@ -915,7 +1126,7 @@ async function call(acao, p) {
   if (m === 'gas') return new Promise((res, rej) => google.script.run.withSuccessHandler(s => res(JSON.parse(s))).withFailureHandler(rej).rpc(acao, p || {}, CONEX.token || ''));
   if (m === 'http') { const r = await fetch(CONEX.api, { method: 'POST', body: JSON.stringify({ acao, p, token: CONEX.token || '' }) }); return r.json(); }
   if (acao === 'carregar') return { ok: true, db: DB };
-  const ctx = { hoje: HOJE, hora: new Date().toTimeString().slice(0, 5), envia: false, enviarEmail: () => true };
+  const ctx = { hoje: HOJE, hora: new Date().toTimeString().slice(0, 5), envia: false, enviarEmail: () => true, usuario: LS.get('cr_usuario') || '' };
   try { const r = C.executar(DB, acao, p, ctx); LS.set('cr_db', DB); r.db = DB; return r; } catch (e) { return { ok: false, msg: e.message }; }
 }
 async function act(acao, p, o = {}) {
@@ -924,7 +1135,7 @@ async function act(acao, p, o = {}) {
     const r = await call(acao, p);
     if (r && r.auth || r && !r.ok && /chave de acesso|token/i.test(r.msg || '')) { pedirChave(); return r; }
     if (!r || !r.ok) { toast((r && r.msg) || 'Falha ao executar ' + acao, 1); return r; }
-    if (r.db) setDB(r.db);
+    if (r.db) { setDB(r.db); if (acao !== 'carregar') bancoAgendar(); }
     if (r.msg && !o.silent) toast(r.msg);
     if (!o.noRender) render();
     return r;
@@ -934,6 +1145,7 @@ function setDB(db) { DB = db; ['contratos', 'lancamentos', 'responsaveis', 'conf
 let tT; function toast(m, err) { const t = $('#toast'); t.textContent = m; t.className = err ? 'err' : ''; t.hidden = false; clearTimeout(tT); tT = setTimeout(() => t.hidden = true, err ? 6000 : 3000); }
 
 /* ---------- helpers ---------- */
+const refVig = () => COMP === HOJE.slice(0, 7) ? HOJE : C.somaDias(C.compSoma(COMP, 1) + '-01', -1); // data-base da vigência: hoje no mês atual; último dia do mês nos demais
 const CI = () => C.idx(DB);
 const lancsComp = c => { const ci = CI(); return DB.lancamentos.filter(l => l.comp === c && (ci[l.contrato] && ci[l.contrato].ativo !== 'N' || l.comp < HOJE.slice(0, 7) && (l.arquivo || l.lancado === 'S'))); }; // mês atual: só contratos ativos; meses passados mantêm o histórico
 const pill = (s, extra = '') => `<span class="pill p-${s.k}" ${extra}>${esc(s.t)}</span>`;
@@ -952,17 +1164,17 @@ function sparkline(vals, w = 90, h = 22) {
 /* ---------- abas ---------- */
 const ABAS = [['painel', 'Painel'], ['lanc', 'Lançamentos do mês'], ['contratos', 'Contratos e vigência'], ['conc', 'Conciliação da pasta'], ['analise', 'Análise'], ['config', 'Configuração']];
 function renderTabs() {
-  const al = C.alertas(DB, HOJE, CFG), crit = al.filter(a => a.n === 3).length, semDoc = DB.contratos.filter(c => c.ativo !== 'N' && !C.dig(c.doc)).length;
+  const al = C.alertas(DB, HOJE, CFG, refVig()), crit = al.filter(a => a.n === 3).length, semDoc = DB.contratos.filter(c => c.ativo !== 'N' && !C.dig(c.doc)).length;
   $('#tabs').innerHTML = ABAS.map(([k, t]) => `<button class="tab" role="tab" data-aba="${k}" aria-selected="${ABA === k}">${t}${k === 'painel' && crit ? `<span class="ct">${crit}</span>` : ''}${k === 'contratos' && semDoc ? `<span class="ct" style="background:var(--warn-s);color:var(--warn)" title="sem CNPJ/CPF">${semDoc}</span>` : ''}</button>`).join('');
   $('#cLbl').textContent = C.fmtComp(COMP);
-  const m = modo(); $('#modo').textContent = m === 'local' ? 'Modo local · este navegador' : 'Planilha conectada'; $('#modo').className = 'modo' + (m === 'local' ? '' : ' on');
+  const m = modo(); $('#modo').textContent = m === 'local' ? (BANCO.est === 'ok' ? 'Banco na pasta' : 'Modo local · este navegador') : 'Planilha conectada'; $('#modo').className = 'modo' + (m === 'local' && BANCO.est !== 'ok' ? '' : ' on');
 }
-function render() { renderTabs(); const f = { painel: vPainel, lanc: vLanc, contratos: vContratos, conc: vConc, analise: vAnalise, config: vConfig }[ABA] || vPainel; $('#v').innerHTML = f(); if (ABA === 'conc') bindConc(); }
+function render() { renderTabs(); const f = { painel: vPainel, lanc: vLanc, contratos: vContratos, conc: vConc, analise: vAnalise, config: vConfig }[ABA] || vPainel; $('#v').innerHTML = f(); if (ABA === 'conc') bindConc(); enhTabelas(); animar(); }
 
 /* ---------- PAINEL ---------- */
 function vPainel() {
   const ls = lancsComp(COMP), st = ls.map(l => C.statusLanc(l, HOJE, CFG)), cnt = k => st.filter(s => [].concat(k).includes(s.k)).length;
-  const ativos = DB.contratos.filter(c => c.ativo !== 'N'), vg = ativos.map(c => C.statusVig(c, HOJE, CFG));
+  const ativos = DB.contratos.filter(c => c.ativo !== 'N'), vg = ativos.map(c => C.statusVig(c, refVig(), CFG));
   const hist = ls.length && st.every(s => s.k === 'hist');
   const gerar = !ls.length ? `<div class="card"><div class="bd row"><b>Competência ${C.fmtComp(COMP)} ainda não foi gerada.</b><span class="hint">Cria um lançamento para cada contrato ativo, com as datas de programação e vencimento do mês.</span><button class="btn pri" data-act="gerar">Gerar ${C.fmtComp(COMP)}</button></div></div>` : '';
   const k = (cls, lbl, n, sub, go) => `<button class="kpi ${cls}" data-go="${go}"><small>${lbl}</small><b>${n}</b><em>${sub}</em></button>`;
@@ -974,18 +1186,19 @@ function vPainel() {
     ${k(cnt('avenc') ? 'crit' : '', 'Vencem em ≤ ' + CFG.diasVenc + ' dias', cnt('avenc'), 'ainda sem lançamento', 'lanc|avenc')}
     ${k(cnt('lanc') ? 'info' : '', 'Lançados s/ PDF', cnt('lanc'), 'marcados à mão · conferir na pasta', 'conc|')}
     ${k('ok', 'Lançados com PDF', conc + '/' + tot, (tot ? Math.round(conc / tot * 100) + '% da competência' : '—') + (conf ? ' · ' + conf + ' p/ confirmar' : '') + (sem ? ' · ' + sem + ' sem cobrança' : ''), conf ? 'lanc|confirmar' : 'lanc|conc')}
-    ${k(vg.some(s => s.n === 3) ? 'crit' : vg.some(s => s.n === 2) ? 'warn' : '', 'Vigência', vg.filter(s => s.n >= 2).length, vg.filter(s => s.k === 'vencido').length + ' vencido(s) · ≤ ' + CFG.diasVig + 'd qualificação', 'contratos|alerta')}
+    ${k(vg.some(s => s.n === 3) ? 'crit' : vg.some(s => s.n === 2) ? 'warn' : '', 'Vigência', vg.filter(s => s.n >= 2).length, vg.filter(s => s.k === 'vencido').length + ' vencido(s) · ≤ ' + CFG.diasVig + 'd qualificação · base ' + C.fmtBR(refVig()), 'contratos|alerta')}
   </div>`;
-  let al = C.alertas(DB, HOJE, CFG); const tipos = uniq(al.map(a => a.tipo));
+  let al = C.alertas(DB, HOJE, CFG, refVig()); const tipos = uniq(al.map(a => a.tipo));
   if (FA) al = al.filter(a => a.tipo === FA);
   const fila = al.slice(0, 60).map(a => `<div class="al n${a.n}"><span class="sv"></span><div style="min-width:0"><div class="ti">${esc(a.tipo)} · ${esc(a.st)}</div><div class="fn" style="font:600 13px var(--f-c)">${esc(a.forn)}</div><div class="sub"><span>${esc(a.cc)}</span><span>${esc(a.serv)}</span>${a.ident ? `<span>${esc(a.ident)}</span>` : ''}${a.canal ? `<span class="chip">${esc(a.canal)}</span>` : ''}${a.k === 'vig' ? `<span>vigência ${C.fmtBR(a.data)}</span>` : `<span>prog ${diaBR(a.dtProg)} · venc ${diaBR(a.dtVenc)}</span><span>${C.fmtComp(a.comp)}</span>`}<span>${esc(a.resp || 'sem responsável')}</span></div></div><div class="ac">${a.k === 'vig' ? `<button class="btn sm" data-act="editC" data-id="${a.contrato}">Contrato</button>` : `${['verif', 'atras', 'venc', 'avenc'].includes(a.k) ? `<button class="btn sm" data-act="marca" data-id="${a.lancId}" data-f="lancado">✓ Lançado</button>` : ''}<button class="btn sm" data-act="cobrar" data-id="${a.lancId}" title="E-mail ao responsável">✉ Cobrar</button>`}</div></div>`).join('');
-  const resp = {}; C.alertas(DB, HOJE, CFG).forEach(a => { const r = a.resp || '—'; resp[r] = resp[r] || { p: 0, c: 0 }; resp[r].p++; if (a.n === 3) resp[r].c++; });
+  const resp = {}; C.alertas(DB, HOJE, CFG, refVig()).forEach(a => { const r = a.resp || '—'; resp[r] = resp[r] || { p: 0, c: 0 }; resp[r].p++; if (a.n === 3) resp[r].c++; });
   const em = {}; DB.responsaveis.forEach(r => em[C.norm(r.nome)] = r.email);
   const ultC = C.ultimaLeitura(DB) || DB.log.filter(l => l.acao === 'conciliar').map(l => String(l.quando)).sort().pop();
   const diasC = ultC ? C.dias(ultC.slice(0, 10), HOJE) : null;
   const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button> <button class="btn sm" data-act="diag" title="Gera um arquivo com contratos, lançamentos e o resultado da última leitura da pasta para conferência">⬇ Diagnóstico</button>`;
   const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC >= 2 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(C.fmtBR(ultC.slice(0, 10)))}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(C.fmtBR(ultC.slice(0, 10)))}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
-  return gerar + aviso + kp + `<div class="grid2">
+  const semBanco = modo() === 'local' && BANCO.est !== 'ok' ? `<div class="warnbox row"><span><b>Os dados estão só neste navegador.</b> Escolha a pasta do banco (de rede ou SharePoint sincronizado) para gravar o <code>contratos-banco.json</code>, com backup diário e uso por várias pessoas.</span><button class="btn sm pri" data-act="bancoPasta">Escolher pasta do banco</button></div>` : '';
+  return semBanco + gerar + aviso + kp + `<div class="grid2">
    <section class="card"><h3>Fila de ação <span class="hint">${al.length} item(ns) · últimas 3 competências + vigência</span><span class="sp chips">${['', ...tipos].map(t => `<button class="fch" data-fa="${esc(t)}" aria-pressed="${FA === t}">${t || 'Todos'}</button>`).join('')}</span></h3>
    <div class="fila">${fila || '<div class="empty">Nenhuma pendência. Tudo em dia.</div>'}</div></section>
    <div style="display:flex;flex-direction:column;gap:14px">
@@ -1025,23 +1238,23 @@ function vLanc() {
    ${F.dia ? `<button class="fch" aria-pressed="true" data-act="limpaDia">Dia ${F.dia} ✕</button>` : ''}
    <span class="hint" style="margin-left:auto">${rows.length} de ${ls.length} · ${C.moeda(tot) || 'R$ 0,00'}</span>
   </div>
-  <div class="flt" style="padding-block:6px"><span class="hint">${SEL.size} selecionado(s)</span><button class="btn sm" data-act="lote" data-f="lancado" ${SEL.size ? '' : 'disabled'}>✓ Marcar lançado</button><button class="btn sm" data-act="loteCobrar" ${SEL.size ? '' : 'disabled'}>✉ Cobrar selecionados</button></div>
+  <div class="flt" style="padding-block:6px"><span class="hint">${SEL.size} selecionado(s)</span><button class="btn sm" data-act="lote" data-f="lancado" ${SEL.size ? '' : 'disabled'}>✓ Marcar lançado</button><button class="btn sm" data-act="loteCobrar" ${SEL.size ? '' : 'disabled'}>✉ Cobrar selecionados</button><button class="btn sm" data-act="loteExcluir" ${SEL.size ? '' : 'disabled'} style="color:var(--crit)">🗑 Excluir selecionados</button><button class="btn sm pri" data-act="novoL" style="margin-left:auto">+ Lançamento</button></div>
   <div class="scroll"><table class="t"><thead><tr><th><input type="checkbox" id="selAll" aria-label="Selecionar todos"></th><th>Situação</th><th>Fornecedor</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Lançado</th><th>NF / doc</th><th>Valor líquido</th><th>PDF</th><th></th></tr></thead><tbody>
   ${rows.map(({ l, c, s }) => `<tr data-id="${l.id}"><td><input type="checkbox" class="sel" ${SEL.has(l.id) ? 'checked' : ''} aria-label="Selecionar"></td><td>${pill(s, s.k === 'sem' ? `title="${esc(l.semCobranca)}"` : '')}${s.k === 'sem' && l.semCobranca !== 'Sem cobrança no mês' ? `<div class="sub">${esc(l.semCobranca)}</div>` : ''}${s.conf ? `<div class="sub"><button class="btn sm" data-act="confirma" data-id="${l.id}" title="O valor do PDF ficou neste contrato mesmo? Confirmar fixa a ligação.">✓ Confirmar</button></div>` : ''}</td>
-   <td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
+   <td><div class="fn" data-hist="${c.id}" title="Abrir histórico do contrato">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
    <td>${esc(c.cc)}<div class="sub">${esc(c.servico)}</div></td><td>${esc(c.resp)}</td>
    <td class="num">${diaBR(l.dtProg)}</td><td class="num">${diaBR(l.dtVenc)}${l.dtVenc.slice(0, 7) !== l.comp ? '<div class="sub">mês seg.</div>' : ''}</td>
    <td><label class="tgl"><input type="checkbox" class="tg" data-f="lancado" ${l.lancado === 'S' ? 'checked' : ''} aria-label="Lançado">${l.dtLanc ? diaBR(l.dtLanc) : ''}</label></td>
    <td><input class="in sm w-nf" data-f="nf" value="${esc(l.nf)}" aria-label="NF"></td>
    <td><input class="in sm w-v" data-f="valor" value="${l.valor === '' || l.valor == null ? '' : esc(String(l.valor).replace('.', ','))}" inputmode="decimal" aria-label="Valor"></td>
    <td>${(() => { const dv = C.conferirPDF(l, ci[l.contrato], CCS); return dv.length ? `<span class="chip" style="background:var(--warn-s);color:var(--warn)" title="${esc(dv.join('\n'))}">⚠ ${dv.length}</span> ` : ''; })()}${l.arquivo ? `${l.arqUrl ? `<a href="${/^https?:/i.test(l.arqUrl) ? esc(l.arqUrl) : '#'}" target="_blank" rel="noopener" title="${esc(l.arquivo)}">PDF</a>` : `<span class="chip" title="${esc(l.arquivo)}">PDF</span>`} <button class="btn ghost sm" data-act="desv" data-id="${l.id}" title="Desvincular">✕</button>` : `<button class="btn ghost sm" data-act="porque" data-id="${l.id}" title="Por que não achou o PDF?">?</button>`}</td>
-   <td style="white-space:nowrap">${s.k !== 'conc' && s.k !== 'hist' && s.k !== 'sem' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button> <button class="btn ghost sm" data-act="semCob" data-id="${l.id}" title="Mês sem cobrança (desconto, carência, contrato suspenso)">∅</button>` : ''}${s.k === 'sem' ? `<button class="btn ghost sm" data-act="semCobDesf" data-id="${l.id}" title="Voltar a cobrar este mês">↺</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
+   <td style="white-space:nowrap">${s.k !== 'conc' && s.k !== 'hist' && s.k !== 'sem' ? `<button class="btn sm" data-act="cobrar" data-id="${l.id}" title="Enviar e-mail ao responsável">✉</button> <button class="btn ghost sm" data-act="semCob" data-id="${l.id}" title="Mês sem cobrança (desconto, carência, contrato suspenso)">∅</button>` : ''}${s.k === 'sem' ? `<button class="btn ghost sm" data-act="semCobDesf" data-id="${l.id}" title="Voltar a cobrar este mês">↺</button>` : ''} <button class="btn ghost sm" data-act="excL" data-id="${l.id}" title="Excluir este lançamento" style="color:var(--crit)">🗑</button></td></tr>`).join('') || '<tr><td colspan="12" class="empty">Nenhum lançamento com esses filtros.</td></tr>'}
   </tbody></table></div></section>`;
 }
 
 /* ---------- CONTRATOS ---------- */
 function vContratos() {
-  const cs = DB.contratos.map(c => ({ c, v: C.statusVig(c, HOJE, CFG) })).filter(({ c, v }) => {
+  const cs = DB.contratos.map(c => ({ c, v: C.statusVig(c, refVig(), CFG) })).filter(({ c, v }) => {
     if (FC.ativo && (c.ativo === 'N' ? 'N' : 'S') !== FC.ativo) return false; if (FC.cc && c.cc !== FC.cc) return false;
     if (FC.vig === 'simples') { if (!/Simples|MEI/.test(c.regime || '')) return false; } else if (FC.vig === 'naosimples') { if (!c.regime || /Simples Nacional|^MEI/.test(c.regime)) return false; } else if (FC.vig === 'semreg') { if (c.regime || C.dig(c.doc).length !== 14) return false; }
     else if (FC.vig === 'alerta' ? v.n < 2 : FC.vig === 'semdoc' ? C.dig(c.doc) : FC.vig && v.k !== FC.vig) return false;
@@ -1055,11 +1268,11 @@ function vContratos() {
    <select id="ccc"><option value="">Centro de custo</option>${uniq(DB.contratos.map(c => c.cc)).map(v => opt(v, FC.cc)).join('')}</select>
    <select id="cvig">${[['', 'Toda vigência'], ['alerta', 'Qualificação / vencidos'], ['vencido', 'Vencidos'], ['qualif', 'Enviar p/ qualificação'], ['vig', 'Vigentes'], ['ind', 'Indeterminado'], ['semdoc', 'Sem CNPJ/CPF'], ['simples', 'Simples / MEI'], ['naosimples', 'Não optante'], ['semreg', 'Enquadramento não consultado']].map(([v, t]) => opt(v, FC.vig, t)).join('')}</select>
    <select id="cat">${[['S', 'Ativos'], ['N', 'Inativos'], ['', 'Todos']].map(([v, t]) => opt(v, FC.ativo, t)).join('')}</select>
-   <span class="hint">${cs.length} contrato(s)</span>
+   <span class="hint">${cs.length} contrato(s) · vigência na data-base ${C.fmtBR(refVig())}</span>
    <button class="btn" data-act="cmpPlan" title="Confere linha a linha a Página1 contra os contratos do painel">⇄ Comparar com a planilha</button><button class="btn" data-act="regTodos" style="margin-left:auto" title="Consulta a Receita (BrasilAPI) para todos os contratos ativos com CNPJ">↻ Consultar enquadramento</button>
    <button class="btn pri" data-act="novoC">+ Novo contrato</button>
   </div><div class="scroll"><table class="t"><thead><tr><th>ID</th><th>Fornecedor</th><th>CNPJ / CPF</th><th>Enquadramento</th><th>C. custo · serviço</th><th>Resp.</th><th>Prog.</th><th>Venc.</th><th>Vigência</th><th>Situação</th><th>Ativo</th><th></th></tr></thead><tbody>
-  ${cs.map(({ c, v }) => `<tr data-cid="${c.id}"><td class="num hint">${c.id}</td><td><div class="fn">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
+  ${cs.map(({ c, v }) => `<tr data-cid="${c.id}"><td class="num hint">${c.id}</td><td><div class="fn" data-hist="${c.id}" title="Abrir histórico do contrato">${esc(c.fornecedor)}</div><div class="sub">${c.ident ? `<span>${esc(c.ident)}</span>` : ''}${c.canal ? `<span class="chip">${esc(c.canal)}</span>` : ''}${c.forma ? `<span class="chip">${esc(c.forma)}</span>` : ''}</div></td>
   <td><input class="in sm w-doc ${C.dig(c.doc) && C.cnpjValido(c.doc) ? '' : 'miss'}" data-cf="doc" value="${esc(C.fmtDoc(c.doc))}" placeholder="00.000.000/0000-00" aria-label="CNPJ ou CPF" title="${C.dig(c.doc) && !C.cnpjValido(c.doc) ? 'CNPJ/CPF inválido (dígito verificador não confere)' : ''}">${C.dig(c.doc) && !C.cnpjValido(c.doc) ? '<div class="sub" style="color:var(--crit)">inválido</div>' : ''}</td>
   <td>${celRegime(c)}</td>
   <td>${esc(c.cc)}<div class="sub">${esc(c.servico)}</div></td><td>${esc(c.resp)}</td><td class="num">DIA ${C.pad(+c.diaProg || 0)}</td><td class="num">DIA ${C.pad(+c.diaVenc || 0)}</td>
@@ -1147,9 +1360,9 @@ function vConc() {
      </tbody></table></div></section>`;
   }
   return `<div class="grid2"><section class="card"><h3>Ler a pasta de documentos lançados</h3><div class="bd" style="display:flex;flex-direction:column;gap:12px">
-   <div class="row"><button class="btn pri" data-act="lerDrive" ${m === 'local' ? 'disabled title="Disponível com a planilha conectada (Apps Script)"' : ''}>Ler pasta do Google Drive</button><span class="hint">${m === 'local' ? 'Conecte a planilha em Configuração para ler o Drive e rodar todo dia às ' + CFG.horaEnvio + 'h.' : CFG.pastaId ? 'Pasta configurada · últimos ' + CFG.diasPasta + ' dias' : 'Informe o ID da pasta em Configuração.'}</span></div>
+   ${`<div class="row"><button class="btn pri" data-act="lerDrive" ${m === 'local' ? 'disabled title="Disponível com a planilha conectada (Apps Script)"' : ''} >Ler pasta do Google Drive</button><span class="hint">${m === 'local' ? 'Conecte a planilha em Configuração para ler o Drive e rodar todo dia às ' + CFG.horaEnvio + 'h.' : CFG.pastaId ? 'Pasta configurada · últimos ' + CFG.diasPasta + ' dias' : 'Informe o ID da pasta em Configuração.'}</span></div>`}
    <div style="display:flex;flex-direction:column;gap:6px"><span class="hint">Pasta de documentos lançados (rede · relatórios diários são ignorados):</span><code style="word-break:break-all;padding:6px 8px">${esc(CFG.pastaLocal)}</code></div>
-   <div class="row"><button class="btn pri" data-act="lerSolus">Ler pasta do SOLUS (o navegador lembra a pasta)</button><button class="btn sm ghost" data-act="trocarSolus">trocar pasta</button></div>
+   <div class="row"><button class="btn pri" data-act="lerSolus">Ler pasta do SOLUS (o navegador lembra a pasta)</button><button class="btn sm ghost" data-act="trocarSolus">trocar pasta</button><button class="btn sm" data-act="historico" title="Lê as pastas dos meses anteriores (ex.: janeiro a agosto) e cria os lançamentos que faltam">Atualizar meses anteriores (jan–ago)</button></div>
    <div class="row"><label class="btn" for="dirIn">Selecionar pasta do computador…</label><input type="file" id="dirIn" webkitdirectory directory multiple hidden><label class="btn" for="filIn">Selecionar PDFs…</label><input type="file" id="filIn" accept=".pdf" multiple hidden><span class="hint">Só o nome e a pasta de cada arquivo são lidos; o PDF não sai do computador.</span></div>
    <details><summary class="hint" style="cursor:pointer">Colar lista de caminhos (mais rápido para pastas grandes na rede)</summary><p class="hint" style="margin:6px 0">1) Copie o comando · 2) Tecla Windows, digite <b>cmd</b>, Enter · 3) Clique com o botão direito para colar e tecle Enter · 4) Volte aqui e cole (Ctrl+V) na caixa abaixo.</p><div class="row"><code id="cmdDir" style="flex:1 1 260px;word-break:break-all;padding:6px 8px">chcp 65001 &gt;nul &amp; dir /s /b "${esc(CFG.pastaLocal)}\*.pdf" | clip</code><button class="btn sm" data-act="copiaCmd">Copiar comando</button></div><textarea id="colar" class="in" rows="4" style="width:100%;margin-top:6px;font-family:var(--f-m);font-size:12px" placeholder="Lançados\\15.09.2026\\11111111000111_NF 1234_1500,00_ADMINISTRAÇÃO.pdf"></textarea><button class="btn sm" data-act="lerColar" style="margin-top:6px">Conciliar lista</button></details>
    <label class="row hint"><input type="checkbox" id="autoAp" checked> vincular automaticamente quando score ≥ ${CFG.autoScore} (CNPJ + CC/UC + competência)</label>
@@ -1171,8 +1384,79 @@ async function conciliarArqs(arquivos) {
   if (r && r.ok) { CONC = { resultado: r.resultado, lidos: r.lidos }; render(); }
 }
 
-/* ---------- ANÁLISE ---------- */
+/* ---------- ANÁLISE · subgrupos ---------- */
+let ASUB = LS.get('cr_asub') || 'mensal', ANO = HOJE.slice(0, 4), AGR = 'contrato', ESTQ = '';
+const fN = v => v == null ? '' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fP = (v, d = 1) => v == null ? '—' : (v > 0 ? '+' : '') + v.toFixed(d).replace('.', ',') + '%';
+const cor = v => v == null || Math.abs(v) < 0.05 ? '' : `color:var(${v > 0 ? '--crit' : '--ok'})`;
+function barrasSVG(serie, mm3) {
+  const W = 640, H = 150, pad = 26, mx = Math.max(1, ...serie.map(s => s.total)), bw = (W - pad) / serie.length, y = v => H - 22 - (v / mx) * (H - 40);
+  const bars = serie.map((s, i) => `<g><rect x="${(pad + i * bw + 4).toFixed(1)}" y="${y(s.total).toFixed(1)}" width="${(bw - 8).toFixed(1)}" height="${Math.max(0, H - 22 - y(s.total)).toFixed(1)}" rx="2" fill="var(--acc)" opacity="${i === serie.length - 1 ? 1 : .55}"><title>${C.fmtComp(s.comp)}: ${C.moeda(s.total)} (${s.n} lançamento(s))</title></rect><text x="${(pad + i * bw + bw / 2).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="9" fill="var(--mute)">${C.fmtComp(s.comp).slice(0, 3)}</text></g>`).join('');
+  const pts = mm3.map((v, i) => v == null ? null : `${(pad + i * bw + bw / 2).toFixed(1)},${y(v).toFixed(1)}`).filter(Boolean).join(' ');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:190px" role="img" aria-label="Total lançado por mês">${bars}${pts ? `<polyline points="${pts}" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3"/>` : ''}<text x="2" y="12" font-size="9" fill="var(--mute)">${C.moeda(mx)}</text></svg>`;
+}
 function vAnalise() {
+  const subs = [['mensal', 'Acompanhamento mensal'], ['anual', 'Fechamento anual'], ['estat', 'Métodos estatísticos'], ['proc', 'Processo (prazos e PDF)']];
+  const nav = `<div class="chips" style="margin-bottom:12px">${subs.map(([k, l]) => `<button class="btn sm${ASUB === k ? ' pri' : ''}" data-act="asub" data-id="${k}">${l}</button>`).join('')}</div>`;
+  return nav + ({ mensal: vAnaMes, anual: vAnaAno, estat: vAnaEst, proc: vAnaliseProc }[ASUB] || vAnaMes)();
+}
+function vAnaMes() {
+  const r = C.analiseMes(DB, COMP, CFG, HOJE), pctF = r.nReal + r.nPend + r.nSem ? Math.round((r.nReal + r.nSem) / (r.nReal + r.nPend + r.nSem) * 100) : 0;
+  const k = (t, v, s, st = '') => `<div class="kpi" style="cursor:default${st}"><small>${t}</small><b>${v}</b><span class="hint">${s}</span></div>`;
+  const ccs = Object.entries(r.porCC).sort((a, b) => (b[1].real + b[1].pend) - (a[1].real + a[1].pend));
+  return `<div class="kpis" style="margin-bottom:12px">
+   ${k('Realizado no mês', C.moeda(r.real), `${r.nReal} lançamento(s) com valor${r.nSem ? ' · ' + r.nSem + ' sem cobrança' : ''}`)}
+   ${k('A lançar (estimado)', C.moeda(r.pend), `${r.nPend} pendente(s) · mediana dos últimos 3 valores`)}
+   ${k('Previsto de fechamento', C.moeda(r.previsto), r.prev ? `${fP(r.prevstat)} sobre ${C.fmtComp(C.compSoma(COMP, -1))}` : 'sem mês anterior')}
+   ${k('Mês anterior', C.moeda(r.prev), r.prev ? 'realizado ' + fP(r.prevar) : '—')}
+   ${k('Mesmo mês, ano anterior', r.ano ? C.moeda(r.ano) : '—', r.ano ? fP((r.previsto - r.ano) / r.ano * 100) + ' no previsto' : 'sem histórico')}
+   ${k('Fechamento do mês', pctF + '%', `${r.nReal + r.nSem} de ${r.nReal + r.nPend + r.nSem} lançamentos resolvidos`)}</div>
+  <div class="grid2"><section class="card"><h3>Total lançado nos últimos 12 meses <span class="hint">barras = total · linha tracejada = média móvel de 3 meses</span></h3><div class="bd">${barrasSVG(r.serie, r.mm3)}</div></section>
+  <section class="card"><h3>Por centro de custo · ${C.fmtComp(COMP)}</h3><div class="bd"><div class="scroll"><table class="t"><thead><tr><th>Centro de custo</th><th class="num">Realizado</th><th class="num">A lançar</th><th class="num">Mês anterior</th><th class="num">Var.</th></tr></thead><tbody>${ccs.map(([n, g]) => { const t = g.real + g.pend, v = g.prev ? (t - g.prev) / g.prev * 100 : null; return `<tr><td>${esc(n)}</td><td class="num">${fN(g.real)}</td><td class="num hint">${g.pend ? fN(g.pend) : ''}</td><td class="num">${fN(g.prev)}</td><td class="num" style="${cor(v)}">${fP(v)}</td></tr>`; }).join('') || '<tr><td colspan="5" class="empty">Sem lançamentos nesta competência.</td></tr>'}</tbody></table></div></div></section></div>
+  <section class="card" style="margin-top:12px"><h3>Contratos do mês <span class="hint">variação sobre o mês anterior e sobre a média dos 3 meses anteriores · destaque se a variação passar de ${CFG.varPct}%</span></h3><div class="bd"><div class="scroll"><table class="t"><thead><tr><th>Fornecedor</th><th>Situação</th><th class="num">Valor</th><th class="num">Mês anterior</th><th class="num">Var. mês</th><th class="num">Média 3m</th><th class="num">Var. 3m</th><th></th></tr></thead><tbody>${r.linhas.map(x => `<tr><td><div class="fn">${esc(x.c.fornecedor)}</div><div class="sub">${esc(x.c.cc)}</div></td><td>${pill(x.st)}</td><td class="num">${x.real != null ? fN(x.real) : `<span class="hint" title="estimativa">~ ${fN(x.est)}</span>`}</td><td class="num">${x.prev != null ? fN(x.prev) : ''}</td><td class="num" style="${cor(x.dp)}">${x.dp == null ? '' : fP(x.dp)}</td><td class="num">${x.m3 != null ? fN(x.m3) : ''}</td><td class="num" style="${cor(x.dm3)}">${x.dm3 == null ? '' : fP(x.dm3)}</td><td>${x.fora ? '<span class="pill p-venc">conferir valor</span>' : ''}</td></tr>`).join('')}</tbody></table></div><p class="hint" style="margin:8px 0 0">“~” = valor estimado para quem ainda não foi lançado. Troque a competência no topo da página para ver outro mês.</p></div></section>`;
+}
+function vAnaAno() {
+  const r = ANA = C.analiseAno(DB, ANO, CFG, HOJE, AGR), M = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], nF = r.fech.filter(f => f.fechado).length, mesAt = HOJE.slice(0, 7);
+  const cel = (x, cp) => x.real != null ? fN(x.real) : (x.est ? `<span class="hint" title="projeção">~${fN(x.est)}</span>` : '');
+  const sel = `<div class="row" style="margin-bottom:10px;gap:10px;flex-wrap:wrap"><label class="hint">Ano <select class="in" style="width:auto" onchange="ANO=this.value;render()">${r.anos.map(a => `<option${a === ANO ? ' selected' : ''}>${a}</option>`).join('')}</select></label>
+   <label class="hint">Agrupar por <select class="in" style="width:auto" onchange="AGR=this.value;render()">${[['contrato', 'Contrato'], ['fornecedor', 'Fornecedor'], ['cc', 'Centro de custo']].map(([k, l]) => `<option value="${k}"${AGR === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+   <button class="btn sm" data-act="csvAno">⬇ Exportar CSV</button></div>`;
+  return sel + `<div class="kpis" style="margin-bottom:12px">
+   <div class="kpi" style="cursor:default"><small>Realizado no ano</small><b>${C.moeda(r.t.real)}</b><span class="hint">soma dos valores lançados</span></div>
+   <div class="kpi" style="cursor:default"><small>Projeção de fechamento</small><b>${C.moeda(r.t.proj)}</b><span class="hint">realizado + estimado (${r.ano === mesAt.slice(0, 4) ? 'meses restantes' : 'sem pendência'})</span></div>
+   <div class="kpi" style="cursor:default"><small>Ano anterior</small><b>${r.t.ant ? C.moeda(r.t.ant) : '—'}</b><span class="hint">${r.varAnt != null ? fP(r.varAnt) + ' na projeção' : 'sem histórico do ano anterior'}</span></div>
+   <div class="kpi" style="cursor:default"><small>Meses fechados</small><b>${nF}/12</b><span class="hint">todos os lançamentos resolvidos</span></div></div>
+  <section class="card"><h3>Fechamento ${r.ano} por ${AGR === 'cc' ? 'centro de custo' : AGR} <span class="hint">“~” = projeção (mediana dos últimos 3 valores) · fundo escuro no mês corrente</span></h3><div class="bd"><div class="scroll"><table class="t mx"><thead><tr><th>${AGR === 'cc' ? 'Centro de custo' : AGR === 'fornecedor' ? 'Fornecedor' : 'Contrato'}</th>${M.map((m, i) => `<th class="num"${r.comps[i] === mesAt ? ' style="color:var(--acc)"' : ''}>${m}</th>`).join('')}<th class="num">Realizado</th><th class="num">Projeção</th><th class="num">Ano ant.</th></tr></thead>
+   <tbody>${r.linhas.map((o, i) => `<tr><td><div class="fn">${esc(o.label)}</div>${o.sub ? `<div class="sub">${esc(o.sub)}</div>` : ''}</td>${o.cells.map(cel).map((x, m) => `<td class="num dr" data-dr="${i}|${m}" title="Abrir os lançamentos">${x}</td>`).join('')}<td class="num dr" data-dr="${i}|t"><b>${fN(o.total)}</b></td><td class="num">${fN(o.proj)}</td><td class="num">${o.ant ? fN(o.ant) : ''}</td></tr>`).join('')}</tbody>
+   <tfoot><tr><th>Total</th>${r.tot.map((x, m) => `<th class="num dr" data-dr="T|${m}">${x.real ? fN(x.real) : ''}${x.est ? `<div class="hint">~${fN(x.est)}</div>` : ''}</th>`).join('')}<th class="num">${fN(r.t.real)}</th><th class="num">${fN(r.t.proj)}</th><th class="num">${r.t.ant ? fN(r.t.ant) : ''}</th></tr>
+   <tr><th>Situação do mês</th>${r.fech.map(f => `<th class="num" style="font-weight:500">${!f.n ? '' : f.fechado ? '<span class="pill p-conc">fechado</span>' : `<span class="pill p-venc" title="${f.abertos} em aberto">${f.abertos} aberto(s)</span>`}</th>`).join('')}<th></th><th></th><th></th></tr></tfoot></table></div></div></section>`;
+}
+function vAnaEst() {
+  const e = C.analiseEstat(DB, CFG, HOJE), q = C.norm(ESTQ), L = e.linhas.filter(o => !q || C.norm(o.c.fornecedor + ' ' + o.c.cc).includes(q));
+  const tCl = { fixo: ['p-conc', 'fixo'], estavel: ['p-auto', 'estável'], variavel: ['p-venc', 'variável'], amostra: ['', 'amostra curta'] };
+  const tTe = { alta: '↗ alta', queda: '↘ queda', estavel: '→ estável', curta: 'amostra curta' };
+  const aviso = e.nMeses < 6 ? `<div class="aviso" style="margin-bottom:12px"><b>Amostra curta:</b> só há ${e.nMeses} mês(es) com valores. Tendência e projeção por regressão exigem 6 meses; outliers (z-score e IQR) exigem 5. Enquanto isso, o painel usa a média dos últimos 3 valores e os testes de salto. Os métodos se ativam sozinhos conforme os meses passam.</div>` : '';
+  const pcT = e.pc.total || 1;
+  return aviso + `<div class="kpis" style="margin-bottom:12px">
+   <div class="kpi" style="cursor:default"><small>Contratos com série ≥ 3</small><b>${e.res.aptos}</b><span class="hint">aptos a estatística</span></div>
+   <div class="kpi" style="cursor:default"><small>Valores fora do padrão</small><b>${e.res.outliers}</b><span class="hint">|z| > 2 ou fora de Tukey (1,5 × IQR)</span></div>
+   <div class="kpi" style="cursor:default"><small>Reajuste provável</small><b>${e.res.reajuste}</b><span class="hint">valor fixo que mudou ≥ 2%</span></div>
+   <div class="kpi" style="cursor:default"><small>Tendência alta / queda</small><b>${e.res.alta} / ${e.res.queda}</b><span class="hint">regressão linear (R² ≥ 0,5)</span></div>
+   <div class="kpi" style="cursor:default"><small>Gasto em valor fixo</small><b>${Math.round(e.pc.fixo / pcT * 100)}%</b><span class="hint">CV &lt; 5% · estável ${Math.round(e.pc.estavel / pcT * 100)}% · variável ${Math.round(e.pc.variavel / pcT * 100)}%</span></div></div>
+  <section class="card"><h3>Estatística por contrato <span class="hint">todas as competências com valor</span></h3><div class="bd"><div class="row" style="margin-bottom:8px"><input class="in" placeholder="Filtrar fornecedor ou centro de custo…" value="${esc(ESTQ)}" oninput="ESTQ=this.value;clearTimeout(window._eq);window._eq=setTimeout(()=>{render();const i=document.querySelector('[oninput^=ESTQ]');if(i){i.focus();i.setSelectionRange(9999,9999)}},350)"></div>
+   <div class="scroll"><table class="t"><thead><tr><th>Fornecedor</th><th>Série</th><th class="num">n</th><th class="num" title="média aritmética">Média</th><th class="num" title="valor central; resiste a extremos">Mediana</th><th class="num" title="desvio-padrão amostral">Desvio</th><th class="num" title="coeficiente de variação = desvio ÷ média">CV</th><th>Perfil</th><th class="num" title="último valor ÷ mediana dos anteriores">Último</th><th class="num" title="inclinação da reta por mês, em % da média">Tend./mês</th><th class="num" title="próximo mês e intervalo de confiança de 95%">Próximo mês (IC 95%)</th><th>Sinais</th></tr></thead><tbody>${L.map(o => `<tr><td><div class="fn">${esc(o.c.fornecedor)}</div><div class="sub">${esc(o.c.cc)}${o.c.ativo === 'N' ? ' · inativo' : ''}</div></td><td>${sparkline(o.serie.map(s => s.v))}</td><td class="num">${o.n}</td><td class="num">${fN(o.media)}</td><td class="num">${fN(o.mediana)}</td><td class="num">${fN(o.dp)}</td><td class="num">${o.cv.toFixed(1).replace('.', ',')}%</td><td><span class="pill ${tCl[o.classe][0]}">${tCl[o.classe][1]}</span></td><td class="num">${fN(o.ult)}${o.salto != null ? `<div class="sub" style="${cor(o.salto)}">${fP(o.salto)}</div>` : ''}</td><td class="num">${o.reg ? (o.tend === 'curta' ? '<span class="hint">—</span>' : fP(o.pctMes) + `<div class="sub">R² ${o.reg.r2.toFixed(2).replace('.', ',')} · ${tTe[o.tend]}</div>`) : ''}</td><td class="num">${o.prox ? `${fN(o.prox.v)}<div class="sub">${fN(o.prox.lo)} – ${fN(o.prox.hi)} · ${o.prox.metodo}</div>` : ''}</td><td>${o.outlier ? '<span class="pill p-venc">fora do padrão</span> ' : ''}${o.reajuste ? '<span class="pill p-auto">reajuste?</span>' : ''}</td></tr>`).join('')}</tbody></table></div></div></section>
+  <div class="grid2" style="margin-top:12px"><section class="card"><h3>Curva ABC por fornecedor <span class="hint">12 meses · Pareto 80/15/5</span></h3><div class="bd">${e.abc.length ? `<div class="scroll" style="max-height:420px"><table class="t"><thead><tr><th>Fornecedor</th><th class="num">Valor</th><th class="num">%</th><th class="num">% acum.</th><th>Classe</th></tr></thead><tbody>${e.abc.map(x => `<tr><td>${esc(x.label)}</td><td class="num">${fN(x.v)}</td><td class="num">${x.pct.toFixed(1).replace('.', ',')}%</td><td class="num">${x.acum.toFixed(1).replace('.', ',')}%</td><td><span class="pill ${x.cls === 'A' ? 'p-venc' : x.cls === 'B' ? 'p-auto' : ''}">${x.cls}</span></td></tr>`).join('')}</tbody></table></div><p class="hint" style="margin:8px 0 0">Classe A = fornecedores que somam até 80% do gasto (onde negociar rende mais).</p>` : '<div class="empty">Sem valores.</div>'}</div></section>
+  <section class="card"><h3>Como ler os métodos</h3><div class="bd"><ul class="hint" style="margin:0;padding-left:16px;display:flex;flex-direction:column;gap:6px">
+   <li><b>CV (coeficiente de variação)</b> = desvio ÷ média. Abaixo de 5% o contrato é de valor fixo; acima de 15% oscila (consumo, tarifas).</li>
+   <li><b>Fora do padrão</b>: o último valor é comparado com os anteriores. Dois testes: z-score (mais de 2 desvios da média) e Tukey (fora de 1,5 × IQR dos quartis). Basta um disparar. Exige 5 meses.</li>
+   <li><b>Reajuste provável</b>: contrato que vinha com valor praticamente fixo (CV &lt; 3%) e mudou 2% ou mais. É o sinal para conferir índice contratual ou aditivo.</li>
+   <li><b>Tendência</b>: reta de mínimos quadrados sobre os meses. Só vale com 6 ou mais meses e R² ≥ 0,5; a inclinação é mostrada em % da média ao mês.</li>
+   <li><b>Próximo mês</b>: pela reta (com 6+ meses e R² ≥ 0,6) ou pela média dos últimos 3 valores. O intervalo é de 95% (distribuição t de Student). Quanto mais meses, mais estreito.</li>
+   <li><b>Curva ABC</b>: ordena os fornecedores pelo gasto; A soma até 80%, B até 95%, C o restante.</li></ul></div></section></div>`;
+}
+
+/* ---------- ANÁLISE · processo ---------- */
+function vAnaliseProc() {
   const comps = [0, -1, -2].map(n => C.compSoma(COMP, n)), ind = C.indicadores(DB, comps, CFG), pc = (a, b) => b ? Math.round(a / b * 100) : 0;
   const est = C.estatisticas(DB, COMP, 12, CFG), ls = lancsComp(COMP), ci = CI(), porCC = {};
   ls.forEach(l => { const v = C.numBR(l.valor); if (v != null) { const cc = (ci[l.contrato] || {}).cc || '—'; porCC[cc] = (porCC[cc] || 0) + v; } });
@@ -1196,10 +1480,10 @@ function vConfig() {
   return `<div class="grid2"><div style="display:flex;flex-direction:column;gap:14px">
   <section class="card"><h3>Responsáveis e e-mails</h3><div class="bd"><form id="fR"><div class="scroll"><table class="t"><thead><tr><th>Nome (igual à coluna Responsável)</th><th>E-mail</th><th></th></tr></thead><tbody id="rBody">${rs.map(r => linhaResp(r)).join('')}</tbody></table></div><div class="row" style="margin-top:8px"><button class="btn sm" type="button" data-act="addR">+ Responsável</button><button class="btn pri sm" type="submit">Salvar responsáveis</button></div></form></div></section>
   <section class="card"><h3>Parâmetros de alerta</h3><div class="bd"><form id="fP" class="form">${campos.map(([k, l, t]) => `<label${k === 'emailGestor' || k === 'pastaId' || k === 'pastaLocal' ? ' class="w2"' : ''}>${l}<input class="in" name="${k}" type="${t}" value="${esc(CFG[k])}"></label>`).join('')}<div class="row" style="grid-column:1/-1"><button class="btn pri" type="submit">Salvar parâmetros</button></div></form></div></section>
+  ${cardBanco()}
   <section class="card"><h3>Importar base (.xlsx)</h3><div class="bd" style="display:flex;flex-direction:column;gap:8px"><p class="hint" style="margin:0">Lê as abas <code>PLANILHA DE DESPESAS MMAAAA</code>: a mais recente vira o cadastro de contratos; as anteriores entram como histórico. Canal (“- email”, “- site”) e UC saem do nome do fornecedor.</p>
    <div class="row"><label class="row hint"><input type="checkbox" id="subst"> substituir contratos e lançamentos atuais (desmarcado: só atualiza os CNPJs)</label><label class="btn" for="xIn">Escolher arquivo .xlsx…</label><input type="file" id="xIn" accept=".xlsx,.xls" hidden onchange="importarX(this)"></div></div></section>
   </div><div style="display:flex;flex-direction:column;gap:14px">
-  <section class="card"><h3>Conexão com o Google Sheets <span class="pill ${m === 'local' ? '' : 'p-conc'}">${m === 'gas' ? 'Rodando no Apps Script' : m === 'http' ? 'URL conectada' : 'Local'}</span></h3><div class="bd" style="display:flex;flex-direction:column;gap:8px">
    ${CONEX.token ? '<div class="row"><span class="hint">Chave de acesso salva neste navegador.</span><button class="btn sm" type="button" onclick="sairChave()">Sair (esquecer chave)</button></div>' : ''}${m === 'gas' ? '<p class="hint" style="margin:0">Este painel está sendo servido pelo Apps Script da própria planilha. Tudo é gravado nas abas CONTRATOS e LANCAMENTOS.</p>' : `<p class="hint" style="margin:0">Para usar este HTML hospedado fora (GitHub Pages/Netlify), cole a URL do app da Web publicado pelo Apps Script.</p><div class="form"><label class="w2">URL do app da Web (/exec)<input id="apiUrl" class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(CONEX.api)}"></label><label class="w2">Token da API<input id="apiTok" class="in" type="password" autocomplete="off" placeholder="gerado por gerarTokenApi()" value="${esc(CONEX.token || '')}"></label></div><div class="row"><button class="btn sm pri" data-act="salvaApi">Conectar</button>${CONEX.api ? '<button class="btn sm" data-act="limpaApi">Desconectar</button>' : ''}<span class="hint">Token: na planilha, menu <b>Contratos › Gerar token para painel externo</b>.</span></div>`}
   </div></section>
   <section class="card"><h3>Implantação (uma vez)</h3><div class="bd"><ol class="steps">
@@ -1231,8 +1515,8 @@ const IDB = {
 };
 const MESES_P = ['JANEIRO', 'FEVEREIRO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO', 'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO'];
 let PASTA_ESTADO = 'sem';
-async function lerHandle(dir) {
-  const out = [], cur = HOJE.slice(0, 7), meses = [0, -1, -2].map(n => +C.compSoma(cur, n).slice(5)); // mês atual e os 2 anteriores
+async function lerHandle(dir, per) {
+  const out = [], cur = HOJE.slice(0, 7), meses = per ? [...new Set(Array.from({ length: 12 }, (_, i) => i + 1).filter(m => { for (let c = per.de; c <= per.ate; c = C.compSoma(c, 1)) if (+c.slice(5) === m) return true; return false; }))] : [0, -1, -2].map(n => +C.compSoma(cur, n).slice(5)); // mês atual e os 2 anteriores (ou o período da carga histórica)
   const mesOk = n => { const u = C.norm(n), i = MESES_P.findIndex(m => (' ' + u + ' ').includes(' ' + m + ' ')); if (i < 0) return null; return meses.includes(i + 1); };
   const base = (CFG.pastaLocal || dir.name).replace(/\\+$/, '');
   async function walk(d, path, depth) {
@@ -1290,7 +1574,222 @@ function baixarDiagnostico() {
   toast(CONC ? 'Diagnóstico baixado (inclui a leitura da pasta)' : 'Diagnóstico baixado — leia a pasta antes para incluir os PDFs', !CONC);
 }
 async function trocarPastaSolus() { await IDB.set('pastaSolus', null); lerPastaSolus(true); }
-function renderTabsOnly() { if (ABA === 'painel') render(); }
+function renderTabsOnly() { render(); }
+
+
+/* ---------- carga histórica (meses anteriores) ---------- */
+async function pastaSolusHandle() {
+  let emFrame = false; try { emFrame = window.self !== window.top; } catch (e) { emFrame = true; }
+  if (!window.showDirectoryPicker || emFrame) { toast('Abra o painel pelo site ou pelo arquivo local, no Chrome ou no Edge, para ler pastas.', 1); return null; }
+  let h = await IDB.get('pastaSolus');
+  if (!h) { try { h = await window.showDirectoryPicker({ id: 'solus', mode: 'read' }); } catch (e) { return null; } await IDB.set('pastaSolus', h); }
+  let perm = await h.queryPermission({ mode: 'read' }); if (perm !== 'granted') perm = await h.requestPermission({ mode: 'read' });
+  return perm === 'granted' ? h : null;
+}
+function formHistorico() {
+  const a = HOJE.slice(0, 4), fim = C.compSoma(HOJE.slice(0, 7), -3); // o painel já lê sozinho o mês atual e os 2 anteriores
+  modal('Carga histórica da pasta do SOLUS', `<p class="hint">Escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> (a do ano, com as subpastas dos meses). Cria os lançamentos dos meses informados, lê as pastas desses meses e liga cada PDF ao contrato (valor e NF saem do nome do arquivo). O que ficar sem PDF não é mantido, para não virar pendência falsa.</p>
+  <form id="fH" class="form"><label>De<input class="in" type="month" name="de" value="${a}-01" required></label><label>Até<input class="in" type="month" name="ate" value="${fim >= a + '-01' ? fim : a + '-12'}" required></label>
+  <div class="row w2" style="grid-column:1/-1"><button class="btn pri" type="submit">Ler pastas e importar</button></div></form>`);
+  $('#fH').addEventListener('submit', async e => { e.preventDefault(); const f = new FormData(e.target), de = f.get('de'), ate = f.get('ate'); fecharModal(); await cargaHistorica(de, ate); });
+}
+async function cargaHistorica(de, ate) {
+  if (de > ate) return toast('Período inválido.', 1);
+  const h = await pastaSolusHandle(); if (!h) return;
+  toast('Lendo as pastas de ' + C.fmtComp(de) + ' a ' + C.fmtComp(ate) + '…');
+  let arqs; try { arqs = await lerHandle(h, { de, ate }); } catch (e) { return toast('Não consegui ler a pasta: ' + e.message, 1); }
+  const ccs = C.listaCC(DB); arqs = arqs.filter(a => { const p = C.parseArquivo(a.nome, a.caminho, ccs, a.data), c = p.comp || (p.venc || '').slice(0, 7); return c >= de && c <= ate; });
+  if (!arqs.length) return toast('Nenhum PDF encontrado nas pastas desse período. Confira se as pastas têm o mês no nome (ex.: JANEIRO).', 1);
+  const g = await act('historico', { de, ate }, { noRender: true, silent: true }); if (!g || !g.ok) return;
+  const r = await act('conciliar', { arquivos: arqs, aplicarAuto: true }, { noRender: true, silent: true }); if (!r || !r.ok) return;
+  const l = await act('historico', { de, ate, limpar: true }, { noRender: true, silent: true });
+  CONC = { resultado: r.resultado, lidos: r.lidos }; render();
+  const aut = r.resultado.filter(x => x.aplicado).length, conf = r.resultado.filter(x => x.situacao === 'sugerido' || x.situacao === 'ambiguo').length, sem = r.resultado.filter(x => x.situacao === 'semvinculo').length;
+  modal('Carga histórica concluída', `<p><b>${arqs.length}</b> PDF(s) lidos de ${C.fmtComp(de)} a ${C.fmtComp(ate)}.</p><ul><li><b>${aut}</b> ligados automaticamente</li><li><b>${conf}</b> aguardam sua escolha na aba Conciliação (sugeridos ou ambíguos)</li><li><b>${sem}</b> sem contrato correspondente</li><li><b>${l && l.removidos || 0}</b> lançamento(s) sem PDF descartados</li></ul><p class="hint">A aba Análise passa a ter a série de meses lidos. Confira a Conciliação para os que sobraram.</p>`);
+}
+
+/* ---------- banco JSON em pasta (igual ao sistema de Impostos) ---------- */
+const BANCO = { arq: 'contratos-banco.json', est: 'sem', quando: '', tm: null, rev: 0 };
+function bancoPayload() { return { formato: 'contratos-recorrentes', versao: C.VERSAO, rev: BANCO.rev + 1, por: LS.get('cr_usuario') || '', salvoEm: new Date().toISOString(), resumo: { contratos: DB.contratos.length, ativos: DB.contratos.filter(c => c.ativo !== 'N').length, lancamentos: DB.lancamentos.length, meses: [...new Set(DB.lancamentos.map(l => l.comp))].sort() }, db: { contratos: DB.contratos, lancamentos: DB.lancamentos, responsaveis: DB.responsaveis, config: DB.config.filter(x => !/token/i.test(x.chave)), log: DB.log } }; }
+async function bancoHandle(interativo) {
+  let emFrame = false; try { emFrame = window.self !== window.top; } catch (e) { emFrame = true; }
+  if (!window.showDirectoryPicker || emFrame) { BANCO.est = 'semsuporte'; if (interativo) toast('Para gravar o banco em pasta, abra o painel pelo site ou pelo arquivo local, no Chrome ou no Edge.', 1); return null; }
+  let h = await IDB.get('pastaBanco');
+  if (!h) { if (!interativo) { BANCO.est = 'sem'; return null; } try { h = await window.showDirectoryPicker({ id: 'banco', mode: 'readwrite' }); } catch (e) { return null; } await IDB.set('pastaBanco', h); }
+  let perm = await h.queryPermission({ mode: 'readwrite' });
+  if (perm !== 'granted') { if (!interativo) { BANCO.est = 'permissao'; return null; } perm = await h.requestPermission({ mode: 'readwrite' }); }
+  if (perm !== 'granted') { BANCO.est = 'permissao'; return null; }
+  return h;
+}
+async function escrever(dir, nome, texto) { const f = await dir.getFileHandle(nome, { create: true }), w = await f.createWritable(); await w.write(texto); await w.close(); }
+async function bancoGravar(interativo) {
+  const h = await bancoHandle(interativo); if (!h) { if (interativo) renderTabsOnly(); return false; }
+  if (interativo && BANCO.rev === 0 && modo() === 'local') { const j1 = await bancoLer(h); if (j1 && j1.db && j1.db.contratos.length && DB.contratos.length) { if (confirm('A pasta já tem um banco (' + j1.db.contratos.length + ' contratos, salvo em ' + String(j1.salvoEm).slice(0, 10) + (j1.por ? ' por ' + j1.por : '') + ').\n\nOK = usar o banco da pasta.\nCancelar = substituir o da pasta pelo que está na tela.')) { BANCO.est = 'ok'; bancoAdotar(j1, 'Banco da pasta carregado.'); return true; } } }
+  if (!DB.contratos.length) { if (interativo) toast('Não há dados para gravar.', 1); return false; }
+  try {
+    if (modo() === 'local') { const j0 = await bancoLer(h); if (j0 && (j0.rev || 0) > BANCO.rev && j0.db && j0.db.contratos.length) { bancoAdotar(j0, 'Outra pessoa alterou o banco' + (j0.por ? ' (' + j0.por + ')' : '') + ' antes de você gravar. Recarreguei da pasta: confira e refaça sua última alteração, se ela sumiu.'); return false; } }
+    const pl = bancoPayload(), t = JSON.stringify(pl); await escrever(h, BANCO.arq, t); BANCO.rev = pl.rev;
+    const bk = await h.getDirectoryHandle('backup', { create: true }); await escrever(bk, 'contratos-banco-' + HOJE + '.json', t);
+    const nomes = []; for await (const [n] of bk.entries()) if (/^contratos-banco-\d{4}-\d{2}-\d{2}\.json$/.test(n)) nomes.push(n);
+    nomes.sort().slice(0, Math.max(0, nomes.length - 30)).forEach(n => bk.removeEntry(n).catch(() => {}));
+    BANCO.est = 'ok'; BANCO.quando = new Date().toTimeString().slice(0, 5); if (interativo) { toast('Banco gravado na pasta ' + h.name + ' (' + Math.round(t.length / 1024) + ' KB)'); renderTabsOnly(); }
+    return true;
+  } catch (e) { BANCO.est = 'erro'; if (interativo) toast('Não consegui gravar na pasta: ' + e.message, 1); return false; }
+}
+function bancoAdotar(j, msg) { setDB(j.db); BANCO.rev = j.rev || 0; if (modo() === 'local') LS.set('cr_db', DB); render(); if (msg) toast(msg, 1); }
+async function bancoVigiar() { // vários usuários na mesma pasta: puxa o que os outros gravaram
+  if (modo() !== 'local' || BANCO.est !== 'ok' || document.hidden || !$('#modal').hidden || BANCO.tm) return;
+  const h = await bancoHandle(false); if (!h) return; const j = await bancoLer(h);
+  if (j && (j.rev || 0) > BANCO.rev && j.db && j.db.contratos) bancoAdotar(j, 'Banco atualizado por ' + (j.por || 'outro usuário') + ' às ' + String(j.salvoEm).slice(11, 16));
+}
+function bancoAgendar() { if (BANCO.est === 'sem' || BANCO.est === 'semsuporte') return; clearTimeout(BANCO.tm); BANCO.tm = setTimeout(() => { BANCO.tm = null; bancoGravar(false); }, 1500); }
+async function bancoLer(h) { try { const f = await (await h.getFileHandle(BANCO.arq)).getFile(); return JSON.parse(await f.text()); } catch (e) { return null; } }
+async function bancoResumo() {
+  const h = await bancoHandle(true); if (!h) return;
+  const j = await bancoLer(h), bks = []; try { const bk = await h.getDirectoryHandle('backup'); for await (const [n] of bk.entries()) if (/\.json$/.test(n)) bks.push(n); } catch (e) {}
+  bks.sort().reverse();
+  const tela = bancoPayload(), igual = j && JSON.stringify(j.db.contratos) === JSON.stringify(tela.db.contratos) && JSON.stringify(j.db.lancamentos) === JSON.stringify(tela.db.lancamentos);
+  modal('Banco JSON · pasta ' + h.name, j ? `<table class="tbl"><tbody><tr><td>Arquivo</td><td>${BANCO.arq} · salvo em ${esc(String(j.salvoEm).replace('T', ' ').slice(0, 16))} · v${esc(j.versao)}</td></tr><tr><td>Contratos</td><td>${j.resumo.contratos} (${j.resumo.ativos} ativos)</td></tr><tr><td>Lançamentos</td><td>${j.resumo.lancamentos} · meses ${esc((j.resumo.meses || []).map(C.fmtComp).join(', '))}</td></tr><tr><td>Pasta × tela</td><td><b style="color:var(${igual ? '--ok' : '--crit'})">${igual ? 'idêntica ao que aparece na tela' : 'DIFERENTE da tela (clique em Gravar agora)'}</b></td></tr><tr><td>Backups diários</td><td>${bks.length ? bks.length + ' · último ' + esc(bks[0].replace(/\D/g, '').replace(/(\d{4})(\d{2})(\d{2})/, '$3/$2/$1')) : 'nenhum ainda'}</td></tr></tbody></table><div class="row" style="margin-top:10px"><button class="btn pri" data-act="bancoGravar">Gravar agora</button><button class="btn" data-act="bancoCarregar">Carregar da pasta para a tela</button></div>`
+    : `<p>A pasta ainda não tem o arquivo <code>${BANCO.arq}</code>.</p><div class="row"><button class="btn pri" data-act="bancoGravar">Gravar agora</button></div>`);
+}
+async function bancoRestaurarObj(b) {
+  if (!b || !b.db || !b.db.contratos || !b.db.lancamentos) return toast('Arquivo de backup inválido.', 1);
+  if (!confirm('Substituir TODOS os dados atuais pelo backup de ' + String(b.salvoEm || '').slice(0, 10) + ' (' + b.db.contratos.length + ' contratos, ' + b.db.lancamentos.length + ' lançamentos)?')) return;
+  if (modo() === 'local') { setDB(b.db); LS.set('cr_db', DB); render(); toast('Banco restaurado.'); bancoAgendar(); }
+  else { await act('restaurarBanco', { db: b.db }); }
+}
+function bancoBackup() { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(bancoPayload())], { type: 'application/json' })); a.download = 'contratos-banco-' + HOJE + '.json'; document.body.appendChild(a); a.click(); a.remove(); }
+function bancoArquivo(inp) { const f = inp.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { let b = null; try { b = JSON.parse(rd.result); } catch (e) {} bancoRestaurarObj(b); inp.value = ''; }; rd.readAsText(f); }
+function cardBanco() {
+  const e = { ok: 'Gravando automático' + (BANCO.quando ? ' · última ' + BANCO.quando : ''), sem: 'Pasta não definida', permissao: 'Precisa de permissão', erro: 'Erro ao gravar', semsuporte: 'Navegador sem suporte' }[BANCO.est] || BANCO.est;
+  return `<section class="card"><h3>Banco JSON <span class="pill ${BANCO.est === 'ok' ? 'p-conc' : ''}">${e}</span></h3><div class="bd" style="display:flex;flex-direction:column;gap:8px">
+   <p class="hint" style="margin:0">Guarda uma cópia completa (contratos, lançamentos, responsáveis, parâmetros e log) no arquivo <code>${BANCO.arq}</code> da pasta escolhida, a cada alteração, mais um backup por dia na subpasta <code>backup</code> (30 dias). Vale como segurança extra mesmo com a planilha conectada.</p>
+   <div class="row" style="flex-wrap:wrap"><button class="btn pri" data-act="bancoPasta">${BANCO.est === 'sem' ? 'Escolher pasta do banco' : 'Gravar agora / conferir pasta'}</button><button class="btn" data-act="bancoResumo">Ver o que está gravado</button><button class="btn" data-act="bancoBackup">⬇ Backup (JSON)</button><label class="btn" for="bkIn">⬆ Restaurar…</label><input type="file" id="bkIn" accept=".json" hidden onchange="bancoArquivo(this)"></div>
+   <div class="row" style="flex-wrap:wrap"><label class="hint">Seu nome (aparece em “salvo por”) <input class="in" style="width:160px" value="${esc(LS.get('cr_usuario') || '')}" onchange="LS.set('cr_usuario', this.value.trim())"></label>${BANCO.rev ? `<span class="hint">revisão ${BANCO.rev}</span>` : ''}</div>
+   <div class="row" style="flex-wrap:wrap"><button class="btn" data-act="historico">Carga histórica (meses anteriores)</button><span class="hint">Lê as pastas do SOLUS de outros meses e cria os lançamentos.</span></div></div></section>`;
+}
+
+
+/* ---------- filtro por coluna (estilo Excel) e abrir valores, igual ao sistema do ISS ---------- */
+function filtroColuna(btn, valores, sel, onOk, onSort) {
+  document.querySelectorAll('.cfp').forEach(x => x.remove());
+  const pop = document.createElement('div'); pop.className = 'cfp';
+  pop.innerHTML = '<div class="cfh"><button data-o="1">Ordenar A→Z / menor→maior</button><button data-o="-1">Ordenar Z→A / maior→menor</button></div><input type="search" placeholder="Pesquisar valores…"><label class="cfa"><input type="checkbox"> <b>(Selecionar tudo)</b> <span class="hint"></span></label><div class="cfl"></div><div class="cff"><button class="pri" data-k="ok">OK</button><button data-k="lp">Limpar filtro</button><button data-k="x">Cancelar</button></div>';
+  document.body.appendChild(pop);
+  const r = btn.getBoundingClientRect(); pop.style.left = Math.max(4, Math.min(r.left, innerWidth - 300)) + 'px'; pop.style.top = Math.min(r.bottom + 2, innerHeight - 380 > 0 ? innerHeight - 380 : 4) + 'px';
+  const marc = new Set(sel ? [...sel] : valores.map(v => v[0])); let vis = valores;
+  const lst = pop.querySelector('.cfl'), all = pop.querySelector('.cfa input'), q = pop.querySelector('input[type=search]');
+  const sync = () => { const n = vis.filter(v => marc.has(v[0])).length; all.checked = n === vis.length && n > 0; all.indeterminate = n > 0 && n < vis.length; pop.querySelector('.cfa .hint').textContent = vis.length + ' valores'; };
+  const desenha = () => { const t = C.norm(q.value).trim(); vis = t ? valores.filter(v => C.norm(v[0]).includes(t)) : valores;
+    lst.innerHTML = vis.slice(0, 1500).map((v, i) => '<label><input type="checkbox" data-i="' + i + '"' + (marc.has(v[0]) ? ' checked' : '') + '> ' + esc(v[0]) + ' <span class="hint">' + v[1] + '</span></label>').join('') + (vis.length > 1500 ? '<p class="hint">' + (vis.length - 1500) + ' valores a mais — use a pesquisa</p>' : '');
+    lst.querySelectorAll('input').forEach(c => c.onchange = () => { const v = vis[+c.dataset.i][0]; c.checked ? marc.add(v) : marc.delete(v); sync(); }); sync(); };
+  all.onchange = () => { vis.forEach(v => all.checked ? marc.add(v[0]) : marc.delete(v[0])); desenha(); };
+  q.oninput = () => { if (q.value.trim()) { marc.clear(); vis = valores.filter(v => C.norm(v[0]).includes(C.norm(q.value).trim())); vis.forEach(v => marc.add(v[0])); } else { marc.clear(); (sel ? [...sel] : valores.map(v => v[0])).forEach(v => marc.add(v)); } desenha(); };
+  const fecha = () => { pop.remove(); document.removeEventListener('mousedown', fora, true); };
+  const fora = e => { if (!pop.contains(e.target) && e.target !== btn) fecha(); };
+  setTimeout(() => document.addEventListener('mousedown', fora, true), 0);
+  pop.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { fecha(); onSort(+b.dataset.o); });
+  pop.querySelector('[data-k=ok]').onclick = () => { fecha(); const s2 = q.value.trim() ? new Set(vis.filter(v => marc.has(v[0])).map(v => v[0])) : new Set(marc); onOk(s2.size === valores.length && !q.value.trim() ? null : s2); };
+  pop.querySelector('[data-k=lp]').onclick = () => { fecha(); onOk(null); };
+  pop.querySelector('[data-k=x]').onclick = fecha;
+  pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); fecha(); } if (e.key === 'Enter') pop.querySelector('[data-k=ok]').click(); });
+  desenha(); q.focus();
+}
+function contarValores(lista, fx) {
+  const mp = new Map(); for (const x of lista) { const t = fx(x) || '(vazio)'; mp.set(t, (mp.get(t) || 0) + 1); }
+  const ar = [...mp.entries()], num = ar.every(([t]) => t === '(vazio)' || /^-?(R\$\s*)?[\d.]+(,\d+)?$/.test(t)), dt = ar.every(([t]) => t === '(vazio)' || /^\d{2}\/\d{2}(\/\d{4})?$/.test(t));
+  const k = t => num ? parseFloat(t.replace(/[R$\s.]/g, '').replace(',', '.')) : dt ? t.split('/').reverse().join('') : t;
+  return ar.sort((a, b) => a[0] === '(vazio)' ? 1 : b[0] === '(vazio)' ? -1 : num ? k(a[0]) - k(b[0]) : String(k(a[0])).localeCompare(String(k(b[0])), 'pt', { numeric: true }));
+}
+const funil = (k, ativo) => `<button class="cfb${ativo ? ' on' : ''}" data-f="${esc(String(k))}" title="Filtrar esta coluna" type="button">${ativo ? '▼' : '▾'}</button>`;
+/* tabelas da tela: funil e ordenação em cada coluna (estado guardado por tabela) */
+const GF = {}; let ANA = null;
+function abrirAno(k) {
+  if (!ANA) return; const [i, m] = k.split('|'), ci = CI(), o = i === 'T' ? null : ANA.linhas[+i], cp = m === 't' ? null : ANA.comps[+m];
+  const ls = DB.lancamentos.filter(l => (cp ? l.comp === cp : l.comp.slice(0, 4) === ANA.ano) && ci[l.contrato] && (!o || C.chaveGrupo(ci[l.contrato], AGR).k === o.key));
+  drillLanc((o ? o.label : 'Todos') + ' · ' + (cp ? C.fmtComp(cp) : 'ano ' + ANA.ano), ls);
+}
+function celTxtDom(td) { if (!td) return ''; const i = td.querySelector('input:not([type=checkbox])'), ck = td.querySelector('input[type=checkbox]'), se = td.querySelector('select'); if (i) return i.value.trim(); if (se) return se.selectedOptions[0] ? se.selectedOptions[0].textContent.trim() : ''; if (ck && !td.textContent.trim()) return ck.checked ? 'Sim' : 'Não'; return td.textContent.replace(/\s+/g, ' ').trim(); }
+function enhTabelas() {
+  if (!['lanc', 'contratos', 'conc', 'analise'].includes(ABA)) return;
+  document.querySelectorAll('#v table.t').forEach((tb, ti) => {
+    const th = [...tb.querySelectorAll('thead tr:first-child th')], body = tb.tBodies[0]; if (!th.length || !body || tb.classList.contains('mx')) return;
+    const id = ABA + '|' + ti + '|' + th.map(x => x.textContent.trim()).join(','), g = GF[id] = GF[id] || { f: {}, s: null }, rows = [...body.rows].filter(r => r.cells.length === th.length);
+    if (!rows.length) return;
+    const txt = (r, c) => celTxtDom(r.cells[c]);
+    th.forEach((h, c) => { if (!h.textContent.trim() || h.querySelector('input')) return; h.innerHTML = '<span class="stl">' + h.innerHTML + (g.s && g.s.c === c ? (g.s.d > 0 ? ' ▴' : ' ▾') : '') + '</span>' + funil(c, !!g.f[c]); h.querySelector('.stl').onclick = () => { g.s = g.s && g.s.c === c ? { c, d: -g.s.d } : { c, d: 1 }; render(); }; });
+    const apl = sem => rows.filter(r => Object.keys(g.f).every(k => +k === sem || g.f[k].has(txt(r, +k) || '(vazio)')));
+    const vis = apl(-1);
+    rows.forEach(r => r.style.display = vis.includes(r) ? '' : 'none');
+    if (g.s) { const c = g.s.c, num = rows.slice(0, 60).every(r => { const t = txt(r, c); return !t || /^-?(R\$\s*)?[\d.]+(,\d+)?%?$/.test(t); }), pv = t => parseFloat(String(t).replace(/[R$\s.%]/g, '').replace(',', '.')) || 0, dtk = t => /^\d{2}\/\d{2}/.test(t) ? t.slice(3, 5) + t.slice(0, 2) : t;
+      rows.slice().sort((a, b) => (num ? pv(txt(a, c)) - pv(txt(b, c)) : dtk(txt(a, c)).localeCompare(dtk(txt(b, c)), 'pt', { numeric: true })) * g.s.d).forEach(r => body.appendChild(r)); }
+    tb.querySelectorAll('th .cfb').forEach(b => b.onclick = e => { e.stopPropagation(); const k = +b.dataset.f;
+      filtroColuna(b, contarValores(apl(k), r => txt(r, k)), g.f[k] || null, st => { if (st) g.f[k] = st; else delete g.f[k]; render(); }, d => { g.s = { c: k, d }; render(); }); });
+    const nf = Object.keys(g.f).length;
+    if (nf || g.s) { const w = tb.closest('.scroll') || tb, bar = document.createElement('div'); bar.className = 'gfi'; bar.innerHTML = `<span>Mostrando <b>${vis.length}</b> de ${rows.length} linha(s)${nf ? ' · ' + nf + ' filtro(s) de coluna' : ''}</span><button class="btn sm" type="button">Limpar filtros e ordem</button>`; bar.querySelector('button').onclick = () => { g.f = {}; g.s = null; render(); }; w.parentNode.insertBefore(bar, w); }
+  });
+}
+/* abrir valores: lista de lançamentos com funil por coluna, ordenação, pesquisa e totais */
+const DR = { titulo: '', itens: [], f: {}, s: { c: 'comp', d: -1 }, q: '', pg: 0, ps: 100 };
+const DRC = [['comp', 'Competência', x => C.fmtComp(x.l.comp)], ['forn', 'Fornecedor', x => x.c.fornecedor || ''], ['cc', 'C. custo', x => x.c.cc || ''], ['resp', 'Resp.', x => x.c.resp || ''], ['venc', 'Venc.', x => C.fmtBR(x.l.dtVenc)], ['sit', 'Situação', x => C.statusLanc(x.l, HOJE, CFG).t], ['lanc', 'Lançado em', x => x.l.dtLanc ? C.fmtBR(x.l.dtLanc) : ''], ['nf', 'NF', x => x.l.nf || ''], ['valor', 'Valor líquido', x => { const v = C.numBR(x.l.valor); return v == null ? '' : C.moeda(v).replace('R$ ', ''); }], ['pdf', 'PDF', x => x.l.arquivo || '']];
+const drNum = x => { const v = C.numBR(x.l.valor); return v == null || x.l.semCobranca ? 0 : v; };
+function drillLanc(titulo, ls, reset = true) {
+  if (reset) { const ci = CI(); DR.titulo = titulo; DR.itens = ls.map(l => ({ l, c: ci[l.contrato] || {} })); DR.f = {}; DR.s = { c: 'comp', d: -1 }; DR.q = ''; DR.pg = 0; }
+  const t = x => DRC.map(([, , f]) => f(x)), vt = (x, k) => DRC.find(d => d[0] === k)[2](x);
+  const q = C.norm(DR.q).trim(), base0 = q ? DR.itens.filter(x => C.norm(t(x).join(' ')).includes(q)) : DR.itens;
+  const aplCf = (arr, sem) => arr.filter(x => Object.keys(DR.f).every(k => k === sem || DR.f[k].has(vt(x, k) || '(vazio)')));
+  let rows = aplCf(base0); const o = DR.s;
+  rows = rows.slice().sort((a, b) => o.c === 'valor' ? (drNum(a) - drNum(b)) * o.d : o.c === 'comp' ? (a.l.comp < b.l.comp ? -1 : a.l.comp > b.l.comp ? 1 : 0) * o.d : vt(a, o.c).localeCompare(vt(b, o.c), 'pt', { numeric: true }) * o.d);
+  const soma = rows.reduce((s, x) => s + drNum(x), 0), vals = rows.map(drNum).filter(v => v), np = Math.max(1, Math.ceil(rows.length / DR.ps)); if (DR.pg >= np) DR.pg = np - 1;
+  const pag = rows.slice(DR.pg * DR.ps, DR.pg * DR.ps + DR.ps), seta = k => o.c === k ? (o.d > 0 ? ' ▴' : ' ▾') : '';
+  const h = `<div class="flt"><input type="search" id="drQ" placeholder="Pesquisar em todas as colunas…" value="${esc(DR.q)}"><span class="hint">${rows.length} lançamento(s) · soma ${C.moeda(soma) || 'R$ 0,00'}${vals.length ? ' · maior ' + C.moeda(Math.max(...vals)) + ' · menor ' + C.moeda(Math.min(...vals)) + ' · média ' + C.moeda(soma / vals.length) : ''}</span>
+   <span style="margin-left:auto" class="row"><button class="btn sm" id="drCsv">⬇ CSV</button>${np > 1 ? `<button class="btn sm" id="drP" ${DR.pg <= 0 ? 'disabled' : ''}>‹</button><span class="hint">pág. ${DR.pg + 1}/${np}</span><button class="btn sm" id="drN" ${DR.pg >= np - 1 ? 'disabled' : ''}>›</button>` : ''}</span></div>
+   <div class="dgrid"><table class="t"><thead><tr>${DRC.map(([k, n]) => `<th class="${k === 'valor' ? 'num' : ''}"><span class="stl" data-s="${k}">${n}${seta(k)}</span>${funil(k, !!DR.f[k])}</th>`).join('')}</tr></thead><tbody>
+   ${pag.map(x => `<tr><td>${C.fmtComp(x.l.comp)}</td><td><div class="fn" data-hist="${esc(x.c.id || '')}">${esc(x.c.fornecedor)}</div></td><td>${esc(x.c.cc)}</td><td>${esc(x.c.resp)}</td><td class="num">${C.fmtBR(x.l.dtVenc)}</td><td>${pill(C.statusLanc(x.l, HOJE, CFG))}</td><td class="num">${x.l.dtLanc ? C.fmtBR(x.l.dtLanc) : ''}</td><td>${esc(x.l.nf)}</td><td class="num">${vt(x, 'valor')}</td><td class="sub" style="max-width:260px;word-break:break-all">${esc(x.l.arquivo)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">Nenhum lançamento.</td></tr>'}
+   </tbody><tfoot><tr><th colspan="8">Total</th><th class="num">${(C.moeda(soma) || '').replace('R$ ', '')}</th><th></th></tr></tfoot></table></div>`;
+  $('#mT').textContent = DR.titulo; $('#mC').innerHTML = h; $('#modal').hidden = false; $('#modal .box').classList.add('wide');
+  const re = () => drillLanc('', null, false), mc = $('#mC');
+  $('#drQ').oninput = e => { DR.q = e.target.value; DR.pg = 0; re(); const i = $('#drQ'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); };
+  mc.querySelectorAll('th .stl').forEach(sp => sp.onclick = () => { const c = sp.dataset.s; DR.s = o.c === c ? { c, d: -o.d } : { c, d: c === 'comp' || c === 'valor' ? -1 : 1 }; DR.pg = 0; re(); });
+  mc.querySelectorAll('th .cfb').forEach(b => b.onclick = e => { e.stopPropagation(); const k = b.dataset.f; filtroColuna(b, contarValores(aplCf(base0, k), x => vt(x, k)), DR.f[k] || null, st => { if (st) DR.f[k] = st; else delete DR.f[k]; DR.pg = 0; re(); }, d => { DR.s = { c: k, d }; DR.pg = 0; re(); }); });
+  if ($('#drP')) { $('#drP').onclick = () => { DR.pg--; re(); }; $('#drN').onclick = () => { DR.pg++; re(); }; }
+  $('#drCsv').onclick = () => { const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', L = [DRC.map(d => q(d[1])).join(';')].concat(rows.map(x => t(x).map(q).join(';'))), b = new Blob(['﻿' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'lancamentos.csv'; a.click(); };
+}
+function histContrato(id) {
+  const c = CI()[id]; if (!c) return; const ls = DB.lancamentos.filter(l => l.contrato === id);
+  drillLanc((c.fornecedor || '') + ' · ' + (c.cc || '') + ' · histórico do contrato', ls); DR.s = { c: 'comp', d: -1 };
+}
+
+
+/* ---------- incluir / excluir pelo HTML ---------- */
+function formLancamento() {
+  const ativos = DB.contratos.filter(c => c.ativo !== 'N').sort((a, b) => a.fornecedor.localeCompare(b.fornecedor, 'pt'));
+  modal('Incluir lançamento', `<p class="hint">Cria um lançamento avulso, ou a competência que faltou para um contrato. Valor e NF também podem ser preenchidos depois pela leitura da pasta.</p>
+  <form id="fL" class="form"><label class="w2">Contrato<select class="in" name="contrato" required>${ativos.map(c => `<option value="${esc(c.id)}">${esc(c.fornecedor)} · ${esc(c.cc)}${c.ident ? ' · ' + esc(c.ident) : ''}</option>`).join('')}</select></label>
+  <label>Competência<input class="in" type="month" name="comp" value="${COMP}" required></label><label>Vencimento<input class="in" type="date" name="dtVenc"></label>
+  <label>NF<input class="in" name="nf"></label><label>Valor líquido<input class="in" name="valor" inputmode="decimal" placeholder="0,00"></label><label class="w2">Observação<input class="in" name="obs"></label>
+  <div class="row w2" style="grid-column:1/-1"><button class="btn pri" type="submit">Incluir</button></div></form>`);
+  $('#fL').addEventListener('submit', async e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.target)); const r = await act('incluirLancamento', f, { noRender: true }); if (r && r.ok) { fecharModal(); COMP = f.comp; render(); } });
+}
+function confirmarExclusao(ids) {
+  const ci = CI(), ls = ids.map(id => DB.lancamentos.find(l => l.id === id)).filter(Boolean); if (!ls.length) return;
+  const com = ls.filter(l => l.arquivo || l.lancado === 'S').length;
+  modal('Excluir lançamento(s)', `<p><b>${ls.length}</b> lançamento(s):</p><ul style="max-height:200px;overflow:auto">${ls.slice(0, 40).map(l => `<li>${esc((ci[l.contrato] || {}).fornecedor || l.contrato)} · ${C.fmtComp(l.comp)}${l.arquivo ? ' · com PDF' : l.lancado === 'S' ? ' · lançado' : ''}</li>`).join('')}${ls.length > 40 ? '<li>…</li>' : ''}</ul>
+  ${com ? `<p class="warnbox">${com} já está(ão) lançado(s) ou com PDF. A exclusão apaga o registro do painel; o PDF na pasta não é tocado.</p>` : ''}<p class="hint">O lançamento excluído não volta na geração automática do mês.</p>
+  <div class="row"><button class="btn" data-act="fechar">Cancelar</button><button class="btn pri" id="exOk" style="background:var(--crit)">Excluir</button></div>`);
+  $('#exOk').onclick = async () => { fecharModal(); SEL.clear(); await act('excluirLancamento', { ids }); };
+}
+
+
+/* números que contam até o valor (padrão do Estudo de Impacto Executivo) */
+let ANIM_KEY = '';
+function countUp(el) {
+  const t = el.textContent.trim(), m = t.match(/^(R\$\s*)?(-?[\d.]+(?:,\d+)?)(\s*%)?$/); if (!m || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const dec = (m[2].split(',')[1] || '').length, n = parseFloat(m[2].replace(/\./g, '').replace(',', '.')); if (!isFinite(n) || Math.abs(n) < 2) return;
+  const f = v => (m[1] || '') + v.toLocaleString('pt-BR', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (m[3] || ''), t0 = performance.now(), d = 900;
+  const step = ts => { const p = Math.min(1, (ts - t0) / d), e = 1 - Math.pow(1 - p, 3); el.textContent = f(n * e); if (p < 1) requestAnimationFrame(step); else el.textContent = t; }; requestAnimationFrame(step);
+}
+function animar() { const k = ABA + '|' + COMP; const novo = k !== ANIM_KEY; ANIM_KEY = k; $('#v').classList.toggle('noanim', !novo); if (novo) document.querySelectorAll('#v .kpi b').forEach(countUp); }
 
 /* ---------- chave de acesso ---------- */
 function pedirChave() {
@@ -1308,7 +1807,15 @@ function semCobranca(id) {
    <div class="row w2" style="grid-column:1/-1"><button class="btn pri" type="submit">Marcar sem cobrança</button></div></form>`);
   $('#fSem').addEventListener('submit', async e => { e.preventDefault(); const m = new FormData(e.target).get('motivo').trim() || 'Sem cobrança no mês'; fecharModal(); await act('atualizarLancamentos', { itens: [{ id, campos: { semCobranca: m } }] }); });
 }
-function modal(t, h) { $('#mT').textContent = t; $('#mC').innerHTML = h; $('#modal').hidden = false; }
+function csvAno() {
+  const r = C.analiseAno(DB, ANO, CFG, HOJE, AGR), M = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"', n = v => v == null ? '' : Number(v).toFixed(2).replace('.', ',');
+  const L = [['Grupo', 'Detalhe', ...M, 'Realizado', 'Projecao', 'Ano anterior'].map(q).join(';')];
+  r.linhas.forEach(o => L.push([q(o.label), q(o.sub), ...o.cells.map(x => n(x.real != null ? x.real : (x.est || null))), n(o.total), n(o.proj), n(o.ant)].join(';')));
+  L.push([q('TOTAL'), q(''), ...r.tot.map(x => n(x.real + x.est)), n(r.t.real), n(r.t.proj), n(r.t.ant)].join(';'));
+  const b = new Blob(['\ufeff' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' }), u = URL.createObjectURL(b), a = document.createElement('a');
+  a.href = u; a.download = `fechamento-${ANO}-${AGR}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(u), 2000);
+}
+function modal(t, h) { $('#modal .box').classList.remove('wide'); $('#mT').textContent = t; $('#mC').innerHTML = h; $('#modal').hidden = false; }
 function fecharModal() { $('#modal').hidden = true; }
 function mostrarEmails(ms, enviados) {
   const local = modo() === 'local';
@@ -1321,6 +1828,8 @@ function mostrarEmails(ms, enviados) {
 /* ---------- eventos ---------- */
 function upd(id, campos) { return act('atualizarLancamentos', { itens: [{ id, campos }] }, { silent: true }); }
 document.addEventListener('click', async e => {
+  const hh = e.target.closest('[data-hist]'); if (hh && hh.dataset.hist) { histContrato(hh.dataset.hist); return; }
+  const dd = e.target.closest('[data-dr]'); if (dd) { abrirAno(dd.dataset.dr); return; }
   const b = e.target.closest('[data-aba],[data-act],[data-go],[data-dia],[data-fa]'); if (!b) return;
   if (b.dataset.aba) { ABA = b.dataset.aba; LS.set('cr_aba', ABA); render(); window.scrollTo(0, 0); return; }
   if (b.dataset.go) { const [a, st] = b.dataset.go.split('|'); ABA = a; if (a === 'lanc') F = { q: '', resp: '', cc: '', st, dia: '' }; if (a === 'contratos') FC.vig = st; render(); return; }
@@ -1332,6 +1841,8 @@ document.addEventListener('click', async e => {
   else if (a === 'marca') upd(id, { [b.dataset.f]: 'S' });
   else if (a === 'cobrar') { const r = await act('cobrar', { id }, { noRender: true }); if (r && r.ok && modo() === 'local') mostrarEmails(r.emails); }
   else if (a === 'desv') act('desvincular', { id });
+  else if (a === 'asub') { ASUB = id; LS.set('cr_asub', id); render(); }
+  else if (a === 'csvAno') csvAno();
   else if (a === 'confirma') act('confirmarLigacao', { ids: [id] });
   else if (a === 'semCob') semCobranca(id);
   else if (a === 'semCobDesf') upd(id, { semCobranca: '' });
@@ -1342,8 +1853,16 @@ document.addEventListener('click', async e => {
   else if (a === 'lote') { await act('atualizarLancamentos', { itens: [...SEL].map(id => ({ id, campos: { [b.dataset.f]: 'S' } })) }); SEL.clear(); render(); }
   else if (a === 'loteCobrar') { const all = []; for (const id of SEL) { const r = await act('cobrar', { id }, { noRender: true, silent: true }); if (r && r.ok) all.push(...r.emails); } SEL.clear(); render(); if (modo() === 'local') mostrarEmails(all); else toast(all.length + ' cobrança(s) enviada(s)'); }
   else if (a === 'lerSolus') lerPastaSolus(true);
+  else if (a === 'historico') formHistorico();
+  else if (a === 'bancoPasta' || a === 'bancoGravar') { const ok = await bancoGravar(true); if (ok && a === 'bancoGravar') fecharModal(); }
+  else if (a === 'bancoResumo') bancoResumo();
+  else if (a === 'bancoBackup') bancoBackup();
+  else if (a === 'bancoCarregar') { const h = await bancoHandle(true), j = h && await bancoLer(h); if (j) { fecharModal(); bancoRestaurarObj(j); } }
   else if (a === 'trocarSolus') trocarPastaSolus();
   else if (a === 'novoC') formContrato(null);
+  else if (a === 'novoL') formLancamento();
+  else if (a === 'excL') confirmarExclusao([id]);
+  else if (a === 'loteExcluir') confirmarExclusao([...SEL]);
   else if (a === 'regTodos') consultarRegimes(null);
   else if (a === 'reg1') { await consultarRegimes([id]); const c = DB.contratos.find(x => x.id === id); if (c && $('#regBox')) $('#regBox').innerHTML = celRegime(c); }
   else if (a === 'editC') formContrato(DB.contratos.find(c => c.id === id));
@@ -1398,12 +1917,14 @@ async function boot() {
     if (r.versao !== C.VERSAO) setTimeout(() => toast('Servidor desatualizado (' + (r.versao || 'versão antiga') + '). No Apps Script: cole o Code.gs novo › Implantar › Gerenciar implantações › editar › Nova versão.', 1), 800);
     $('#verLbl').innerHTML = 'v' + C.VERSAO + (r.versao === C.VERSAO ? '' : ' <b style="color:#e5484d">· servidor ' + (r.versao || 'antigo') + '</b>');
   }
+  { const hb = await bancoHandle(false); if (hb) { BANCO.est = 'ok'; const j = await bancoLer(hb); if (j && j.db && j.db.contratos && j.db.contratos.length && modo() === 'local') { setDB(j.db); BANCO.rev = j.rev || 0; LS.set('cr_db', DB); } } }
   if (!$('#verLbl').innerHTML) $('#verLbl').textContent = 'v' + C.VERSAO;
   if (!lancsComp(HOJE.slice(0, 7)).length && DB.contratos.length) await act('gerarCompetencia', { comp: HOJE.slice(0, 7) }, { silent: true, noRender: true });
   render();
-  if (modo() !== 'local' && DB.contratos.length) lerPastaSolus(false);
+  if ((modo() !== 'local' || BANCO.est === 'ok') && DB.contratos.length) lerPastaSolus(false);
 }
 boot();
+setInterval(bancoVigiar, 20000);
 setInterval(() => { const d = new Date(); if (C.iso(d.getFullYear(), d.getMonth() + 1, d.getDate()) !== HOJE) location.reload(); }, 600000); // virou o dia com o painel aberto: recarrega
 </script>
 
