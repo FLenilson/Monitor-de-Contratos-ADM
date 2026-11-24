@@ -1106,7 +1106,7 @@ var CORE = (function () {
     return { linhas: linhas, res: res, abc: abc, totAbc: totAbc, janelaAbc: c0, pc: pc, nMeses: Object.keys(meses).length };
   }
 
-  return { VERSAO: '2026.11.22d', chaveGrupo: chaveGrupo, statusLancX: statusLanc, analiseMes: analiseMes, analiseAno: analiseAno, analiseEstat: analiseEstat, canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, avisoLeitura: avisoLeitura, ultimaLeitura: ultimaLeitura, aplicarEncerramentos: aplicarEncerramentos, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
+  return { VERSAO: '2026.11.24a', chaveGrupo: chaveGrupo, statusLancX: statusLanc, analiseMes: analiseMes, analiseAno: analiseAno, analiseEstat: analiseEstat, canonCC: canonCC, interpretarCNPJ: interpretarCNPJ, CAMPOS: CAMPOS, CFG_PADRAO: CFG_PADRAO, norm: norm, dig: dig, toISO: toISO, dias: dias, somaDias: somaDias, compSoma: compSoma, fmtBR: fmtBR, fmtComp: fmtComp, numBR: numBR, moeda: moeda, fmtDoc: fmtDoc, cfgDe: cfgDe, separaFornecedor: separaFornecedor, statusLanc: statusLanc, statusVig: statusVig, parseArquivo: parseArquivo, listaCC: listaCC, conciliar: conciliar, conferirPDF: conferirPDF, cnpjValido: cnpjValido, coletarRegime: coletarRegime, alertas: alertas, montarEmails: montarEmails, estatisticas: estatisticas, indicadores: indicadores, executar: executar, avisoLeitura: avisoLeitura, ultimaLeitura: ultimaLeitura, aplicarEncerramentos: aplicarEncerramentos, migrar: migrar, idx: idx, esc: esc, iso: iso, pad: pad, dataNoMes: dataNoMes };
 })();
 
 </script>
@@ -1119,6 +1119,8 @@ let DB = { contratos: [], lancamentos: [], responsaveis: [], config: [], log: []
 let ABA = (location.hash || '').replace('#', '') || LS.get('cr_aba') || 'painel';
 let F = { q: '', resp: '', cc: '', st: '', dia: '' }, FC = { q: '', cc: '', vig: '', ativo: 'S' }, FA = '', CONC = null, SEL = new Set();
 const CONEX_PADRAO = { api: "", token: "" };
+/* link de acesso para colegas: #cx=<base64 url|chave>; o trecho depois de # não vai para o servidor e é apagado da barra ao abrir */
+try { const m = /[#&]cx=([^&]+)/.exec(location.hash); if (m) { const [u, t] = decodeURIComponent(escape(atob(decodeURIComponent(m[1])))).split('|'); if (/^https:\/\/script\.google\.com\//.test(u || '')) LS.set('cr_conexao', { api: u, token: t || '' }); history.replaceState(null, '', location.pathname + location.search); } } catch (e) { }
 const _cx = LS.get('cr_conexao') || {};
 const CONEX = { api: _cx.api || CONEX_PADRAO.api, token: _cx.token || CONEX_PADRAO.token };
 
@@ -1200,9 +1202,10 @@ function vPainel() {
   const diasC = ultC ? C.dias(ultC.slice(0, 10), HOJE) : null;
   const btnP = `<button class="btn sm pri" data-act="lerSolus">${PASTA_ESTADO === 'permissao' ? 'Permitir e ler a pasta do SOLUS' : 'Ler pasta do SOLUS agora'}</button> <button class="btn sm" data-act="diag" title="Gera um arquivo com contratos, lançamentos e o resultado da última leitura da pasta para conferência">⬇ Diagnóstico</button>`;
   const aviso = PASTA_ESTADO === 'permissao' ? `<div class="warnbox row"><b>O navegador precisa da sua permissão para ler a pasta do SOLUS hoje.</b>${btnP}</div>` : !ultC ? `<div class="warnbox row"><span><b>A pasta do SOLUS ainda não foi lida.</b> Clique no botão, escolha a pasta <b>1- NOTAS FISCAIS PARA LANÇAMENTO NO SOLUS</b> uma vez e o navegador passa a ler sozinho ao abrir o painel.</span>${btnP}</div>` : diasC >= 2 ? `<div class="warnbox row"><span><b>Última leitura da pasta: ${esc(C.fmtBR(ultC.slice(0, 10)))}</b> (há ${diasC} dias).</span>${btnP}</div>` : `<div class="row hint">Última leitura da pasta do SOLUS: <b>${esc(C.fmtBR(ultC.slice(0, 10)))}</b> ${btnP.replace('btn sm pri', 'btn sm')}</div>`;
+  const semConexao = modo() === 'local' && !CONEX.api && !DB.contratos.length ? `<div class="warnbox row"><span><b>Este navegador ainda não está conectado à planilha.</b> Os dados ficam no Google: peça a quem administra o <b>link de acesso</b> (Configuração › Copiar link de acesso para colega) ou cole a URL /exec e a chave em Configuração.</span><button class="btn sm pri" data-go="config">Ir para Configuração</button></div>` : '';
   const semBackup = modo() !== 'local' && BANCO.est !== 'ok' && BANCO.est !== 'semsuporte' ? `<div class="warnbox row"><span><b>Backup na pasta de rede ${BANCO.est === 'permissao' ? 'precisa de permissão' : 'não está ativo'}.</b> A base é a aba CONTRATOS; a pasta guarda uma cópia diária em <code>contratos-banco.json</code>.</span><button class="btn sm pri" data-act="bancoPasta">${BANCO.est === 'permissao' ? 'Permitir' : 'Escolher pasta do backup'}</button></div>` : '';
   const semBanco = modo() === 'local' && BANCO.est !== 'ok' ? `<div class="warnbox row"><span><b>Os dados estão só neste navegador.</b> Escolha a pasta do banco (de rede ou SharePoint sincronizado) para gravar o <code>contratos-banco.json</code>, com backup diário e uso por várias pessoas.</span><button class="btn sm pri" data-act="bancoPasta">Escolher pasta do banco</button></div>` : '';
-  return semBanco + semBackup + gerar + aviso + kp + `<div class="grid2">
+  return semConexao + semBanco + semBackup + gerar + aviso + kp + `<div class="grid2">
    <section class="card"><h3>Fila de ação <span class="hint">${al.length} item(ns) · últimas 3 competências + vigência</span><span class="sp chips">${['', ...tipos].map(t => `<button class="fch" data-fa="${esc(t)}" aria-pressed="${FA === t}">${t || 'Todos'}</button>`).join('')}</span></h3>
    <div class="fila">${fila || '<div class="empty">Nenhuma pendência. Tudo em dia.</div>'}</div></section>
    <div style="display:flex;flex-direction:column;gap:14px">
@@ -1400,9 +1403,76 @@ function barrasSVG(serie, mm3) {
   return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:190px" role="img" aria-label="Total lançado por mês">${bars}${pts ? `<polyline points="${pts}" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="4 3"/>` : ''}<text x="2" y="12" font-size="9" fill="var(--mute)">${C.moeda(mx)}</text></svg>`;
 }
 function vAnalise() {
-  const subs = [['mensal', 'Acompanhamento mensal'], ['anual', 'Fechamento anual'], ['estat', 'Métodos estatísticos'], ['proc', 'Processo (prazos e PDF)']];
+  const subs = [['periodo', 'Período e comparativos'], ['mensal', 'Acompanhamento mensal'], ['anual', 'Fechamento anual'], ['estat', 'Métodos estatísticos'], ['proc', 'Processo (prazos e PDF)']];
   const nav = `<div class="chips" style="margin-bottom:12px">${subs.map(([k, l]) => `<button class="btn sm${ASUB === k ? ' pri' : ''}" data-act="asub" data-id="${k}">${l}</button>`).join('')}</div>`;
-  return nav + ({ mensal: vAnaMes, anual: vAnaAno, estat: vAnaEst, proc: vAnaliseProc }[ASUB] || vAnaMes)();
+  return nav + ({ periodo: vAnaPer, mensal: vAnaMes, anual: vAnaAno, estat: vAnaEst, proc: vAnaliseProc }[ASUB] || vAnaPer)();
+}
+/* ---------- análise por período (filtro de datas) ---------- */
+const PER = Object.assign({ de: C.compSoma(HOJE.slice(0, 7), -11), ate: HOJE.slice(0, 7), base: 'comp', grp: 'fornecedor' }, LS.get('cr_per') || {});
+let PERG = null;
+const perMeses = (de, ate) => { const o = []; for (let c = de; c <= ate && o.length < 240; c = C.compSoma(c, 1)) o.push(c); return o; };
+const vlP = l => (l.semCobranca && !l.arquivo) ? null : C.numBR(l.valor);
+const perKey = (l, b) => b === 'venc' ? (l.dtVenc || '').slice(0, 7) : b === 'lanc' ? (l.dtLanc || '').slice(0, 7) : l.comp;
+function perLancs(de, ate, base) { const ci = CI(); return DB.lancamentos.filter(l => { const k = perKey(l, base); return k && k >= de && k <= ate && ci[l.contrato]; }); }
+const estDB = () => Object.assign({}, DB, { lancamentos: perLancs(PER.de, PER.ate, 'comp') });
+function perSalva() { if (PER.de > PER.ate) { const t = PER.de; PER.de = PER.ate; PER.ate = t; } LS.set('cr_per', PER); render(); }
+function perPre(id) {
+  const hj = HOJE.slice(0, 7), a = +HOJE.slice(0, 4), cs = DB.lancamentos.map(l => l.comp).filter(Boolean).sort();
+  const m = { m3: [C.compSoma(hj, -2), hj], m6: [C.compSoma(hj, -5), hj], m12: [C.compSoma(hj, -11), hj], ytd: [a + '-01', hj], ano: [a + '-01', a + '-12'], antano: [(a - 1) + '-01', (a - 1) + '-12'], tudo: [cs[0] || hj, cs[cs.length - 1] || hj] }[id];
+  if (m) { PER.de = m[0]; PER.ate = m[1]; perSalva(); }
+}
+function perBar(full) {
+  const pre = [['m3', '3 meses'], ['m6', '6 meses'], ['m12', '12 meses'], ['ytd', 'Ano até agora'], ['ano', 'Ano ' + HOJE.slice(0, 4)], ['antano', 'Ano anterior'], ['tudo', 'Tudo']];
+  return `<div class="card" style="margin-bottom:12px"><div class="bd"><div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+   <label class="hint">De<input class="in" type="month" value="${PER.de}" style="width:auto" onchange="if(this.value){PER.de=this.value;perSalva()}"></label>
+   <label class="hint">Até<input class="in" type="month" value="${PER.ate}" style="width:auto" onchange="if(this.value){PER.ate=this.value;perSalva()}"></label>
+   ${full ? `<label class="hint">Data usada<select class="in" style="width:auto" onchange="PER.base=this.value;perSalva()">${[['comp', 'Competência'], ['venc', 'Vencimento'], ['lanc', 'Data do lançamento']].map(([k, l]) => `<option value="${k}"${PER.base === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>
+   <label class="hint">Agrupar por<select class="in" style="width:auto" onchange="PER.grp=this.value;perSalva()">${[['fornecedor', 'Fornecedor'], ['contrato', 'Contrato'], ['cc', 'Centro de custo'], ['resp', 'Responsável']].map(([k, l]) => `<option value="${k}"${PER.grp === k ? ' selected' : ''}>${l}</option>`).join('')}</select></label>` : ''}
+   <span class="chips">${pre.map(([k, l]) => `<button class="btn sm ghost" data-act="perPre" data-id="${k}">${l}</button>`).join('')}</span>
+   ${full ? '<button class="btn sm" data-act="perCsv" style="margin-left:auto">⬇ CSV do ranking</button>' : ''}</div>
+   <div class="hint" style="margin-top:6px">Período: <b>${C.fmtComp(PER.de)}</b> a <b>${C.fmtComp(PER.ate)}</b> (${perMeses(PER.de, PER.ate).length} mês(es))${full ? '' : ' · vale para os métodos estatísticos (por competência)'}</div></div></div>`;
+}
+function vAnaPer() {
+  const ci = CI(), ms = perMeses(PER.de, PER.ate), n = ms.length, pAte = C.compSoma(PER.de, -1), pDe = C.compSoma(PER.de, -n), gk = c => PER.grp === 'resp' ? { k: C.norm(c.resp || '—'), l: c.resp || '—', s: '' } : C.chaveGrupo(c, PER.grp);
+  const ls = perLancs(PER.de, PER.ate, PER.base), lp = perLancs(pDe, pAte, PER.base), G = {};
+  const add = (l, campo) => { const v = vlP(l); if (v == null || !v) return; const k = gk(ci[l.contrato]); const o = G[k.k] = G[k.k] || { key: k.k, label: k.l, sub: k.s, tot: 0, n: 0, ant: 0, ls: [], lp: [] }; if (campo === 'a') { o.ant += v; o.lp.push(l); } else { o.tot += v; o.n++; o.ls.push(l); } };
+  ls.forEach(l => add(l, 't')); lp.forEach(l => add(l, 'a'));
+  const gs = Object.values(G).sort((a, b) => b.tot - a.tot), tot = gs.reduce((s, o) => s + o.tot, 0), ant = gs.reduce((s, o) => s + o.ant, 0), nl = gs.reduce((s, o) => s + o.n, 0);
+  PERG = { gs, ls, lp, ms };
+  const serie = ms.map(c => { const t = ls.filter(l => perKey(l, PER.base) === c); let s = 0, q = 0; t.forEach(l => { const v = vlP(l); if (v) { s += v; q++; } }); return { comp: c, total: s, n: q }; });
+  const mm3 = serie.map((s, i) => { const j = serie.slice(Math.max(0, i - 2), i + 1).filter(x => x.n); return j.length === 3 ? j.reduce((a, x) => a + x.total, 0) / 3 : null; });
+  const mx = serie.slice().sort((a, b) => b.total - a.total)[0], vt = ant ? (tot - ant) / ant * 100 : null, ctr = new Set(ls.filter(l => vlP(l)).map(l => l.contrato)).size;
+  const k = (t, v, s, kd) => `<button type="button" class="kpi" data-kp="${kd}" title="Clique para ver os lançamentos"><small>${t}</small><b>${v}</b><span class="hint">${s}</span></button>`;
+  let ac = 0; const rank = gs.map(o => { ac += o.tot; return { o, pct: tot ? o.tot / tot * 100 : 0, acum: tot ? ac / tot * 100 : 0 }; });
+  const dif = gs.map(o => ({ o, d: o.tot - o.ant })).filter(x => Math.abs(x.d) >= 0.01).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 10);
+  // pontualidade por responsável (lançado x vencimento)
+  const R = {}; ls.forEach(l => { const c = ci[l.contrato]; if (l.semCobranca && !l.arquivo) return; const nm = c.resp || '—', o = R[nm] = R[nm] || { nome: nm, n: 0, lan: 0, ok: 0, soma: 0, atr: 0, ls: [] }; o.n++; o.ls.push(l); if (l.dtLanc && l.dtVenc) { const d = C.dias(l.dtVenc, l.dtLanc); o.lan++; o.soma += d; if (d <= (+CFG.tolDoc || 0)) o.ok++; } else if (!l.dtLanc && l.dtVenc && l.dtVenc < HOJE) o.atr++; });
+  const rs = Object.values(R).sort((a, b) => b.n - a.n); PERG.rs = rs;
+  const lbl = { comp: 'competência', venc: 'vencimento', lanc: 'data do lançamento' }[PER.base], gl = { fornecedor: 'Fornecedor', contrato: 'Contrato', cc: 'Centro de custo', resp: 'Responsável' }[PER.grp];
+  return perBar(true) + `<div class="kpis" style="margin-bottom:12px">
+   ${k('Total no período', C.moeda(tot), `${nl} lançamento(s) com valor · por ${lbl}`, 'tot')}
+   ${k('Média mensal', C.moeda(n ? tot / n : 0), `${n} mês(es) no período`, 'tot')}
+   ${k('Período anterior', ant ? C.moeda(ant) : '—', `${C.fmtComp(pDe)} a ${C.fmtComp(pAte)}`, 'ant')}
+   ${k('Variação', fP(vt), vt == null ? 'sem período anterior com valor' : (tot - ant >= 0 ? '+' : '−') + ' ' + C.moeda(Math.abs(tot - ant)) + ' sobre o anterior', 'tot')}
+   ${k('Contratos com valor', ctr, `${gs.length} ${gl.toLowerCase()}(s) no ranking`, 'tot')}
+   ${k('Maior mês', mx && mx.total ? C.moeda(mx.total) : '—', mx && mx.total ? C.fmtComp(mx.comp) : '', 'mx')}</div>
+  <div class="grid2"><section class="card"><h3>Evolução no período <span class="hint">barras = total · linha tracejada = média móvel de 3 meses</span></h3><div class="bd">${serie.length ? barrasSVG(serie, mm3) : '<div class="empty">Sem meses.</div>'}</div></section>
+  <section class="card"><h3>Maiores variações contra o período anterior <span class="hint">por ${gl.toLowerCase()}</span></h3><div class="bd"><div class="scroll sk" style="max-height:300px"><table class="t"><thead><tr><th>${gl}</th><th class="num">Anterior</th><th class="num">Período</th><th class="num">Diferença</th><th class="num">Var.</th></tr></thead><tbody>${dif.map(({ o, d }) => `<tr data-pg="${gs.indexOf(o)}" style="cursor:pointer"><td><div class="fn">${esc(o.label)}</div>${o.sub ? `<div class="sub">${esc(o.sub)}</div>` : ''}</td><td class="num">${o.ant ? fN(o.ant) : ''}</td><td class="num">${o.tot ? fN(o.tot) : ''}</td><td class="num" style="${cor(d)}">${(d > 0 ? '+' : '') + fN(d)}</td><td class="num" style="${cor(o.ant ? d / o.ant * 100 : null)}">${!o.ant ? '<span class="pill p-auto">novo</span>' : !o.tot ? '<span class="pill p-venc">saiu</span>' : fP(d / o.ant * 100)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Sem variação para comparar.</td></tr>'}</tbody></table></div></div></section></div>
+  <section class="card" style="margin-top:12px"><h3>Ranking por ${gl.toLowerCase()} <span class="hint">clique na linha para abrir os lançamentos · % acumulado mostra a concentração (Pareto)</span></h3><div class="bd"><div class="scroll sk"><table class="t" id="tPer"><thead><tr><th>${gl}</th><th class="num">Lanç.</th><th class="num">Total</th><th class="num">% do total</th><th class="num">% acum.</th><th class="num">Ticket médio</th><th class="num">Período anterior</th><th class="num">Var.</th></tr></thead><tbody>
+   ${rank.map(({ o, pct, acum }, i) => `<tr data-pg="${i}" style="cursor:pointer"><td><div class="fn">${esc(o.label)}</div>${o.sub ? `<div class="sub">${esc(o.sub)}</div>` : ''}</td><td class="num">${o.n}</td><td class="num">${fN(o.tot)}</td><td class="num">${pct.toFixed(1).replace('.', ',')}%</td><td class="num">${acum.toFixed(1).replace('.', ',')}%</td><td class="num">${o.n ? fN(o.tot / o.n) : ''}</td><td class="num">${o.ant ? fN(o.ant) : ''}</td><td class="num" style="${cor(o.ant ? (o.tot - o.ant) / o.ant * 100 : null)}">${o.ant ? fP((o.tot - o.ant) / o.ant * 100) : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Nenhum lançamento com valor neste período.</td></tr>'}</tbody>
+   <tfoot><tr><th>Total</th><th class="num">${nl}</th><th class="num">${fN(tot)}</th><th class="num">100%</th><th></th><th class="num">${nl ? fN(tot / nl) : ''}</th><th class="num">${ant ? fN(ant) : ''}</th><th class="num">${fP(vt)}</th></tr></tfoot></table></div></div></section>
+  <section class="card" style="margin-top:12px"><h3>Pontualidade por responsável <span class="hint">dias entre o vencimento e a data do lançamento · no prazo = até ${+CFG.tolDoc || 0} dia(s) · clique para abrir</span></h3><div class="bd"><div class="scroll sk" style="max-height:340px"><table class="t"><thead><tr><th>Responsável</th><th class="num">Lançamentos</th><th class="num">Já lançados</th><th class="num">No prazo</th><th class="num">Atraso médio (dias)</th><th class="num">Em atraso hoje</th></tr></thead><tbody>
+   ${rs.map((o, i) => `<tr data-pr="${i}" style="cursor:pointer"><td>${esc(o.nome)}</td><td class="num">${o.n}</td><td class="num">${o.lan}</td><td class="num">${o.lan ? Math.round(o.ok / o.lan * 100) + '%' : ''}</td><td class="num" style="${cor(o.lan ? o.soma / o.lan : null)}">${o.lan ? (o.soma / o.lan).toFixed(1).replace('.', ',') : ''}</td><td class="num">${o.atr ? `<span class="pill p-venc">${o.atr}</span>` : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">Sem lançamentos.</td></tr>'}</tbody></table></div></div></section>`;
+}
+function perDrill(k) {
+  if (!PERG) return; let ls, tit = 'Período ' + C.fmtComp(PER.de) + ' a ' + C.fmtComp(PER.ate);
+  const cm = l => vlP(l); const nn = a => a.filter(l => cm(l));
+  if (k === 'tot') ls = nn(PERG.ls); else if (k === 'ant') { ls = nn(PERG.lp); tit = 'Período anterior'; }
+  else if (k === 'mx') { const o = {}; nn(PERG.ls).forEach(l => { const c = perKey(l, PER.base); o[c] = (o[c] || 0) + cm(l); }); const m = Object.entries(o).sort((a, b) => b[1] - a[1])[0]; ls = m ? nn(PERG.ls).filter(l => perKey(l, PER.base) === m[0]) : []; tit = 'Maior mês · ' + (m ? C.fmtComp(m[0]) : ''); }
+  drillLanc(tit, ls);
+}
+function perCsv() {
+  const t = document.querySelector('#tPer'); if (!t) return; const q = v => '"' + String(v).replace(/"/g, '""') + '"', rows = [...t.rows].map(r => [...r.cells].map(c => q(c.textContent.replace(/\s+/g, ' ').trim())).join(';')), b = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'ranking-periodo.csv'; a.click();
 }
 function vAnaMes() {
   const r = C.analiseMes(DB, COMP, CFG, HOJE), pctF = r.nReal + r.nPend + r.nSem ? Math.round((r.nReal + r.nSem) / (r.nReal + r.nPend + r.nSem) * 100) : 0;
@@ -1436,12 +1506,12 @@ function vAnaAno() {
    <tr><th>Situação do mês</th>${r.fech.map(f => `<th class="num" style="font-weight:500">${!f.n ? '' : f.fechado ? '<span class="pill p-conc">fechado</span>' : `<span class="pill p-venc" title="${f.abertos} em aberto">${f.abertos} aberto(s)</span>`}</th>`).join('')}<th></th><th></th><th></th></tr></tfoot></table></div></div></section>`;
 }
 function vAnaEst() {
-  const e = C.analiseEstat(DB, CFG, HOJE), q = C.norm(ESTQ), L = e.linhas.filter(o => !q || C.norm(o.c.fornecedor + ' ' + o.c.cc).includes(q));
+  const e = C.analiseEstat(estDB(), CFG, HOJE), q = C.norm(ESTQ), L = e.linhas.filter(o => !q || C.norm(o.c.fornecedor + ' ' + o.c.cc).includes(q));
   const tCl = { fixo: ['p-conc', 'fixo'], estavel: ['p-auto', 'estável'], variavel: ['p-venc', 'variável'], amostra: ['', 'amostra curta'] };
   const tTe = { alta: '↗ alta', queda: '↘ queda', estavel: '→ estável', curta: 'amostra curta' };
   const aviso = e.nMeses < 6 ? `<div class="aviso" style="margin-bottom:12px"><b>Amostra curta:</b> só há ${e.nMeses} mês(es) com valores. Tendência e projeção por regressão exigem 6 meses; outliers (z-score e IQR) exigem 5. Enquanto isso, o painel usa a média dos últimos 3 valores e os testes de salto. Os métodos se ativam sozinhos conforme os meses passam.</div>` : '';
   const pcT = e.pc.total || 1;
-  return aviso + `<div class="kpis" style="margin-bottom:12px">
+  return perBar(false) + aviso + `<div class="kpis" style="margin-bottom:12px">
    <button type="button" class="kpi" data-ke="aptos" title="Clique para ver os contratos que compõem este número"><small>Contratos com série ≥ 3</small><b>${e.res.aptos}</b><span class="hint">aptos a estatística</span></button>
    <button type="button" class="kpi" data-ke="out" title="Clique para ver os contratos que compõem este número"><small>Valores fora do padrão</small><b>${e.res.outliers}</b><span class="hint">|z| > 2 ou fora de Tukey (1,5 × IQR)</span></button>
    <button type="button" class="kpi" data-ke="reaj" title="Clique para ver os contratos que compõem este número"><small>Reajuste provável</small><b>${e.res.reajuste}</b><span class="hint">valor fixo que mudou ≥ 2%</span></button>
@@ -1489,7 +1559,7 @@ function vConfig() {
   <section class="card"><h3>Importar base (.xlsx)</h3><div class="bd" style="display:flex;flex-direction:column;gap:8px"><p class="hint" style="margin:0">Lê as abas <code>PLANILHA DE DESPESAS MMAAAA</code>: a mais recente vira o cadastro de contratos; as anteriores entram como histórico. Canal (“- email”, “- site”) e UC saem do nome do fornecedor.</p>
    <div class="row"><label class="row hint"><input type="checkbox" id="subst"> substituir contratos e lançamentos atuais (desmarcado: só atualiza os CNPJs)</label><label class="btn" for="xIn">Escolher arquivo .xlsx…</label><input type="file" id="xIn" accept=".xlsx,.xls" hidden onchange="importarX(this)"></div></div></section>
   </div><div style="display:flex;flex-direction:column;gap:14px">
-   ${CONEX.token ? '<div class="row"><span class="hint">Chave de acesso salva neste navegador.</span><button class="btn sm" type="button" onclick="sairChave()">Sair (esquecer chave)</button></div>' : ''}${m === 'gas' ? '<p class="hint" style="margin:0">Este painel está sendo servido pelo Apps Script da própria planilha. Tudo é gravado nas abas CONTRATOS e LANCAMENTOS.</p>' : `<p class="hint" style="margin:0">Para usar este HTML hospedado fora (GitHub Pages/Netlify), cole a URL do app da Web publicado pelo Apps Script.</p><div class="form"><label class="w2">URL do app da Web (/exec)<input id="apiUrl" class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(CONEX.api)}"></label><label class="w2">Token da API<input id="apiTok" class="in" type="password" autocomplete="off" placeholder="gerado por gerarTokenApi()" value="${esc(CONEX.token || '')}"></label></div><div class="row"><button class="btn sm pri" data-act="salvaApi">Conectar</button>${CONEX.api ? '<button class="btn sm" data-act="limpaApi">Desconectar</button>' : ''}<span class="hint">Token: na planilha, menu <b>Contratos › Gerar token para painel externo</b>.</span></div>`}
+   ${CONEX.token ? '<div class="row"><span class="hint">Chave de acesso salva neste navegador.</span><button class="btn sm" type="button" onclick="sairChave()">Sair (esquecer chave)</button></div>' : ''}${m === 'gas' ? '<p class="hint" style="margin:0">Este painel está sendo servido pelo Apps Script da própria planilha. Tudo é gravado nas abas CONTRATOS e LANCAMENTOS.</p>' : `<p class="hint" style="margin:0">Para usar este HTML hospedado fora (GitHub Pages/Netlify), cole a URL do app da Web publicado pelo Apps Script.</p><div class="form"><label class="w2">URL do app da Web (/exec)<input id="apiUrl" class="in" placeholder="https://script.google.com/macros/s/…/exec" value="${esc(CONEX.api)}"></label><label class="w2">Token da API<input id="apiTok" class="in" type="password" autocomplete="off" placeholder="gerado por gerarTokenApi()" value="${esc(CONEX.token || '')}"></label></div><div class="row"><button class="btn sm pri" data-act="salvaApi">Conectar</button>${CONEX.api ? '<button class="btn sm" data-act="limpaApi">Desconectar</button>' : ''}${CONEX.api && CONEX.token ? '<button class="btn sm" data-act="linkAcesso" title="Gera um link que já conecta o navegador do colega à planilha">Copiar link de acesso para colega</button>' : ''}<span class="hint">Token: na planilha, menu <b>Contratos › Gerar token para painel externo</b>.</span></div>`}
   </div></section>
   <section class="card"><h3>Implantação (uma vez)</h3><div class="bd"><ol class="steps">
    <li>Na planilha do Google Sheets com as abas mensais: <b>Extensões › Apps Script</b>.</li>
@@ -1622,7 +1692,7 @@ async function bancoHandle(interativo) {
   let emFrame = false; try { emFrame = window.self !== window.top; } catch (e) { emFrame = true; }
   if (!window.showDirectoryPicker || emFrame) { BANCO.est = 'semsuporte'; if (interativo) toast('Para gravar o banco em pasta, abra o painel pelo site ou pelo arquivo local, no Chrome ou no Edge.', 1); return null; }
   let h = await IDB.get('pastaBanco');
-  if (!h) { if (!interativo) { BANCO.est = 'sem'; return null; } try { h = await window.showDirectoryPicker({ id: 'banco', mode: 'readwrite' }); } catch (e) { return null; } await IDB.set('pastaBanco', h); }
+  if (!h) { if (!interativo) { BANCO.est = 'sem'; return null; } try { h = await window.showDirectoryPicker({ id: 'banco', mode: 'readwrite' }); } catch (e) { BANCO.est = 'sem'; if (e && e.name !== 'AbortError') toast('O navegador não aceitou esta pasta (' + (e.name || 'erro') + '). Crie uma subpasta (ex.: Contratos-Banco) dentro da rede e escolha ela, não a raiz do S: nem Documentos/Downloads.', 1); return null; } await IDB.set('pastaBanco', h); }
   let perm = await h.queryPermission({ mode: 'readwrite' });
   if (perm !== 'granted') { if (!interativo) { BANCO.est = 'permissao'; return null; } perm = await h.requestPermission({ mode: 'readwrite' }); }
   if (perm !== 'granted') { BANCO.est = 'permissao'; return null; }
@@ -1727,7 +1797,7 @@ function abrirKpi(k) {
   drillLanc(tit + (mes ? C.fmtComp(cp) : ay), ls);
 }
 function abrirEst(k) {
-  const e = C.analiseEstat(DB, CFG, HOJE), ap = e.linhas.filter(o => o.n >= 3), f = {
+  const e = C.analiseEstat(estDB(), CFG, HOJE), ap = e.linhas.filter(o => o.n >= 3), f = {
     aptos: ['Contratos com série de 3 meses ou mais', ap, 'Têm histórico suficiente para média, desvio e salto.'],
     out: ['Valores fora do padrão', e.linhas.filter(o => o.outlier), 'O último valor saiu do padrão dos anteriores: |z| > 2 (z-score) ou fora de 1,5 × IQR (Tukey). Exige 5 meses.'],
     reaj: ['Reajuste provável', e.linhas.filter(o => o.reajuste), 'Vinha com valor praticamente fixo (CV < 3%) e mudou 2% ou mais: confira índice contratual ou aditivo.'],
@@ -1867,6 +1937,9 @@ function upd(id, campos) { return act('atualizarLancamentos', { itens: [{ id, ca
 document.addEventListener('click', async e => {
   const hh = e.target.closest('[data-hist]'); if (hh && hh.dataset.hist) { histContrato(hh.dataset.hist); return; }
   const dd = e.target.closest('[data-dr]'); if (dd) { abrirAno(dd.dataset.dr); return; }
+  const kp = e.target.closest('[data-kp]'); if (kp) { perDrill(kp.dataset.kp); return; }
+  const pg = e.target.closest('[data-pg]'); if (pg && PERG && PERG.gs[+pg.dataset.pg]) { const o = PERG.gs[+pg.dataset.pg]; drillLanc(o.label + ' · ' + C.fmtComp(PER.de) + ' a ' + C.fmtComp(PER.ate), o.ls.concat(o.lp.length && !o.ls.length ? o.lp : [])); return; }
+  const pr = e.target.closest('[data-pr]'); if (pr && PERG && PERG.rs[+pr.dataset.pr]) { const o = PERG.rs[+pr.dataset.pr]; drillLanc('Responsável ' + o.nome + ' · ' + C.fmtComp(PER.de) + ' a ' + C.fmtComp(PER.ate), o.ls); return; }
   const ke = e.target.closest('[data-ke]'); if (ke) { abrirEst(ke.dataset.ke); return; }
   const kd = e.target.closest('[data-kd]'); if (kd) { abrirKpi(kd.dataset.kd); return; }
   const kc = e.target.closest('[data-kcc]'); if (kc) { abrirCC(kc.dataset.kcc); return; }
@@ -1883,6 +1956,8 @@ document.addEventListener('click', async e => {
   else if (a === 'desv') act('desvincular', { id });
   else if (a === 'asub') { ASUB = id; LS.set('cr_asub', id); render(); }
   else if (a === 'csvAno') csvAno();
+  else if (a === 'perPre') perPre(id);
+  else if (a === 'perCsv') perCsv();
   else if (a === 'confirma') act('confirmarLigacao', { ids: [id] });
   else if (a === 'semCob') semCobranca(id);
   else if (a === 'semCobDesf') upd(id, { semCobranca: '' });
@@ -1921,6 +1996,7 @@ document.addEventListener('click', async e => {
   }
   else if (a === 'addR') $('#rBody').insertAdjacentHTML('beforeend', linhaResp({ nome: '', email: '' }));
   else if (a === 'rmR') b.closest('tr').remove();
+  else if (a === 'linkAcesso') { if (!CONEX.api || !CONEX.token) { toast('Conecte este navegador à planilha primeiro.', 1); return; } if (!confirm('O link contém a chave de acesso da planilha. Envie só para colegas autorizados (Teams/e-mail da Unimed) e nunca publique no GitHub. Copiar o link?')) return; const u = location.origin + location.pathname + '#cx=' + encodeURIComponent(btoa(unescape(encodeURIComponent(CONEX.api + '|' + CONEX.token)))); try { await navigator.clipboard.writeText(u); toast('Link copiado. Ao abrir, o painel já conecta à planilha.'); } catch (e) { prompt('Copie o link:', u); } }
   else if (a === 'salvaApi') { CONEX.api = $('#apiUrl').value.trim(); CONEX.token = $('#apiTok').value.trim(); LS.set('cr_conexao', CONEX); boot(); }
   else if (a === 'limpaApi') { CONEX.api = ''; CONEX.token = ''; LS.set('cr_conexao', CONEX); boot(); }
   else if (a === 'copiar') { const m = window._emails[+b.dataset.i], txt = m.assunto + '\n\n' + m.texto; try { await navigator.clipboard.writeText(txt); toast('Texto copiado'); } catch (err) { const pre = b.closest('.mail').querySelector('pre'); const s = getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); s.removeAllRanges(); s.addRange(rg); toast('Selecionado: use Ctrl+C'); } }
